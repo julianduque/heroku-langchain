@@ -1,4 +1,4 @@
-# Heroku Mia Langchain SDK
+# Heroku Mia LangChain SDK
 
 This SDK provides a convenient way to interact with Heroku's AI services, specifically for chat completions and agent functionalities.
 
@@ -158,10 +158,7 @@ async function agentExample() {
       }
       // Check for tool calls made by the agent
       if (chunk.tool_call_chunks && chunk.tool_call_chunks.length > 0) {
-        console.log(
-          "\nAgent wants to call tools:",
-          chunk.tool_call_chunks,
-        );
+        console.log("\nAgent wants to call tools:", chunk.tool_call_chunks);
       }
       // Check for tool results from Heroku
       if (chunk.additional_kwargs?.tool_results) {

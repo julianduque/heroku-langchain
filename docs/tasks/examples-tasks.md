@@ -14,6 +14,8 @@ Provide example usage for `HerokuMia` and `HerokuMiaAgent` classes as demonstrat
 - [x] Create `examples/heroku-mia-chat-structured-output.ts` (Zod schema for output).
 - [x] Create `examples/heroku-mia-chat-lcel-prompt.ts` (LCEL with prompt template and output parser).
 - [x] Create `examples/heroku-mia-chat-custom-tool.ts` (using a custom Node.js function as a tool).
+- [x] Create `examples/heroku-mia-runnable-sequence.ts` (chaining `HerokuMia` calls with `RunnableSequence`).
+- [x] Create `examples/heroku-mia-chat-wikipedia-tool.ts` (using `HerokuMia` with a custom `WikipediaTool`).
 
 ## In Progress Tasks
 
@@ -22,7 +24,7 @@ Provide example usage for `HerokuMia` and `HerokuMiaAgent` classes as demonstrat
 ## Future Tasks
 
 - [ ] Add more examples for specific features (e.g., specific agent event handling for HerokuMiaAgent).
-- [ ] Add instructions on how to run the examples (e.g., `tsx examples/heroku-mia-chat-example.ts`).
+- [ ] Add instructions on how to run the examples (e.g., `tsx examples/heroku-mia-chat-example.ts`, `tsx examples/heroku-mia-runnable-sequence.ts`, `tsx examples/heroku-mia-chat-wikipedia-tool.ts`).
 - [ ] Review and refine tool definition and input parsing in the custom tool example.
 
 ## Implementation Plan
@@ -37,5 +39,7 @@ Extract code snippets from `SPECS.md` and place them into individual `.ts` files
 - `examples/heroku-mia-chat-structured-output.ts` - HerokuMia with Zod structured output.
 - `examples/heroku-mia-chat-lcel-prompt.ts` - HerokuMia with LCEL, prompt, and parser.
 - `examples/heroku-mia-chat-custom-tool.ts` - HerokuMia with a custom tool.
+- `examples/heroku-mia-runnable-sequence.ts` - Chaining `HerokuMia` calls with `RunnableSequence`.
+- `examples/heroku-mia-chat-wikipedia-tool.ts` - Using `HerokuMia` with a custom `WikipediaTool`.
 - `src/types.ts` - Updated to support example code.
 - `package.json` - Updated with `zod` dependency for structured output example.

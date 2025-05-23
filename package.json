@@ -3,15 +3,29 @@
   "version": "0.0.1",
   "description": "Integrate LangChainJS with Heroku's Managed Inference and Agents (Mia) services.",
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx --watch src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "pnpm run build"
   },
   "keywords": [
     "langchain",
@@ -22,14 +36,28 @@
   ],
   "author": "Julián Duque <jduque@heroku.com>",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/julianduque/heroku-langchain.git"
+  },
+  "bugs": {
+    "url": "https://github.com/julianduque/heroku-langchain/issues"
+  },
+  "homepage": "https://github.com/julianduque/heroku-langchain#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
-    "@langchain/core": "^0.3.57",
-    "zod": "^3.23.8"
+    "@langchain/core": "^0.3.57"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
     "@eslint/json": "^0.12.0",
     "@eslint/markdown": "^6.4.0",
+    "@langchain/community": "^0.3.44",
     "@types/node": "^22.15.21",
     "eslint": "^9.27.0",
     "eslint-config-prettier": "^10.1.5",
@@ -37,7 +65,8 @@
     "prettier": "^3.5.3",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.32.1"
+    "typescript-eslint": "^8.32.1",
+    "zod": "^3.23.8"
   },
   "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
 }
