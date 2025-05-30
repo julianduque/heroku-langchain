@@ -290,10 +290,6 @@ The test files are organized as follows:
 
 All tests use environment variable mocking to avoid requiring actual API keys during testing.
 
-## Contributing
-
-(Details on how to contribute to this project, if applicable)
-
 ## License
 
 Apache 2.0
