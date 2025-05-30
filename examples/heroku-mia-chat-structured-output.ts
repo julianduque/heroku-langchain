@@ -2,8 +2,6 @@ import { z } from "zod";
 import { HerokuMia } from "../src"; // Adjusted for local example structure
 import { HumanMessage } from "@langchain/core/messages";
 
-// TODO: Currently not working with HerokuMia
-
 // Define the Zod schema for the desired structured output
 const JokeSchema = z.object({
   setup: z.string().describe("The setup of the joke"),
@@ -21,7 +19,57 @@ async function main() {
     temperature: 0.7,
   });
 
+  // First, let's test the basic model without structured output
+  console.log("\nTesting basic model response...");
+  try {
+    const basicResponse = await llm.invoke([
+      new HumanMessage("Tell me a short, clean joke about programming."),
+    ]);
+    console.log("Basic response:", basicResponse);
+  } catch (error) {
+    console.error("Error during basic invoke:", error);
+  }
+
+  // Now test with tools bound manually
+  console.log("\nTesting with manual tool binding...");
+  try {
+    const toolSchema = {
+      type: "function" as const,
+      function: {
+        name: "extract",
+        description: "Extract structured information",
+        parameters: {
+          type: "object",
+          properties: {
+            setup: { type: "string", description: "The setup of the joke" },
+            punchline: {
+              type: "string",
+              description: "The punchline of the joke",
+            },
+            explanation: {
+              type: "string",
+              description: "An optional explanation of why the joke is funny",
+            },
+          },
+          required: ["setup", "punchline"],
+        },
+      },
+    };
+
+    const boundLlm = llm.bindTools([toolSchema]);
+    const manualResponse = await boundLlm.invoke([
+      new HumanMessage(
+        "Tell me a short, clean joke about programming. Use the extract function to structure your response.",
+      ),
+    ]);
+    console.log("Manual tool response:", manualResponse);
+    console.log("Tool calls:", manualResponse.tool_calls);
+  } catch (error) {
+    console.error("Error during manual tool invoke:", error);
+  }
+
   // Create a version of the LLM that can return structured output
+  console.log("\nTesting withStructuredOutput...");
   const structuredLLM = llm.withStructuredOutput(JokeSchema);
 
   try {

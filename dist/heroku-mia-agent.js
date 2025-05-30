@@ -10,8 +10,8 @@ export class HerokuMiaAgent extends BaseChatModel {
     stop;
     topP;
     tools;
-    herokuApiKey;
-    herokuApiUrl;
+    apiKey;
+    apiUrl;
     maxRetries;
     timeout;
     streaming; // For consistency, though agent might always stream or have specific stream endpoint
@@ -35,13 +35,14 @@ export class HerokuMiaAgent extends BaseChatModel {
         this.stop = fields.stop;
         this.topP = fields.topP ?? 0.999;
         this.tools = fields.tools; // Assuming tools are passed in constructor
-        this.herokuApiKey = fields.herokuApiKey;
-        this.herokuApiUrl = fields.herokuApiUrl;
+        this.apiKey = fields.apiKey;
+        this.apiUrl = fields.apiUrl;
         this.maxRetries = fields.maxRetries ?? 2;
         this.timeout = fields.timeout;
         // Agent API is always streaming, so set this to true.
         this.streaming = true;
-        this.streamUsage = true; // Explicitly tell BaseChatModel to use _stream
+        // Set streamUsage to false so stream() calls _stream() directly to preserve heroku_agent_event
+        this.streamUsage = false;
         this.additionalKwargs = fields.additionalKwargs ?? {};
     }
     _llmType() {
@@ -100,17 +101,9 @@ export class HerokuMiaAgent extends BaseChatModel {
                 }
             }
             if (chunk.additional_kwargs) {
-                // Filter out heroku_agent_event from additional_kwargs before assigning to message
-                const { heroku_agent_event, ...restKwargs } = chunk.additional_kwargs;
-                Object.assign(additional_kwargs, restKwargs);
-                if (heroku_agent_event === "stream.end") {
-                    finish_reason = "stop";
-                }
-                else if (heroku_agent_event === "tool.call") {
-                    finish_reason = "tool_calls";
-                }
-                else if (chunk.additional_kwargs.finish_reason &&
-                    typeof chunk.additional_kwargs.finish_reason === "string") {
+                // Merge additional_kwargs from chunks
+                Object.assign(additional_kwargs, chunk.additional_kwargs);
+                if (chunk.additional_kwargs.finish_reason && typeof chunk.additional_kwargs.finish_reason === "string") {
                     finish_reason = chunk.additional_kwargs.finish_reason;
                 }
             }
@@ -157,6 +150,20 @@ export class HerokuMiaAgent extends BaseChatModel {
                 }
             }
         });
+        // Also check for tool calls in additional_kwargs (Heroku Agent pattern)
+        // If we have tool_call_id, tool_name, and tool_result, synthesize a tool call
+        if (additional_kwargs.tool_call_id && additional_kwargs.tool_name) {
+            // Check if we already have this tool call from chunks
+            const existingToolCall = aggregatedToolCalls.find(tc => tc.id === additional_kwargs.tool_call_id);
+            if (!existingToolCall) {
+                aggregatedToolCalls.push({
+                    id: additional_kwargs.tool_call_id,
+                    name: additional_kwargs.tool_name,
+                    args: {}, // We don't have the original args, so use empty object
+                    type: "tool_call",
+                });
+            }
+        }
         const message = new AIMessage({
             content: aggregatedContent,
             tool_calls: aggregatedToolCalls.length > 0 ? aggregatedToolCalls : undefined,
@@ -169,7 +176,13 @@ export class HerokuMiaAgent extends BaseChatModel {
                 finish_reason: finish_reason ||
                     finalAIMessageChunk?.additional_kwargs?.finish_reason ||
                     "stop",
-                // Any other aggregated info from finalAIMessageChunk or additional_kwargs
+                // Include tool information for tracing
+                tool_calls: aggregatedToolCalls.length > 0 ? aggregatedToolCalls : undefined,
+                tool_results: additional_kwargs.tool_result ? {
+                    tool_call_id: additional_kwargs.tool_call_id,
+                    tool_name: additional_kwargs.tool_name,
+                    result: additional_kwargs.tool_result
+                } : undefined,
             },
         };
         return {
@@ -183,7 +196,7 @@ export class HerokuMiaAgent extends BaseChatModel {
     }
     async *_stream(messages, options, runManager) {
         const agentApiEndpoint = "/v1/agents/heroku";
-        const herokuConfig = getHerokuConfigOptions(this.herokuApiKey, this.herokuApiUrl, agentApiEndpoint);
+        const herokuConfig = getHerokuConfigOptions(this.apiKey, this.apiUrl, agentApiEndpoint);
         const herokuMessages = langchainMessagesToHerokuMessages(messages);
         const params = this.invocationParams({
             ...options,
@@ -260,8 +273,7 @@ export class HerokuMiaAgent extends BaseChatModel {
             for await (const parsedEvent of parseHerokuSSE(response.body)) {
                 // Handle [DONE] signal if it comes as plain text data
                 if (parsedEvent.data === "[DONE]") {
-                    runManager?.handleLLMEnd({ generations: [] });
-                    return; // End the generator
+                    return; // End the generator - BaseChatModel will handle LLM end
                 }
                 let eventDataJSON;
                 try {
@@ -272,7 +284,6 @@ export class HerokuMiaAgent extends BaseChatModel {
                     // console.warn("Skipping non-JSON SSE data:", parsedEvent.data, e);
                     if (parsedEvent.data?.includes("[DONE]")) {
                         // Double check for [DONE] that might not be exact match
-                        runManager?.handleLLMEnd({ generations: [] });
                         return;
                     }
                     runManager?.handleLLMError(new HerokuApiError("Invalid JSON in agent stream event", undefined, { event: parsedEvent.event, data: parsedEvent.data }));
@@ -280,7 +291,10 @@ export class HerokuMiaAgent extends BaseChatModel {
                 }
                 // Determine the Heroku event type from the 'object' field in the data
                 const herokuEventType = eventDataJSON.object; // e.g., "chat.completion", "tool.completion", "chat.completion.chunk"
-                // The original parsedEvent.event might be generic like "message"
+                // Skip events without a proper object type
+                if (!herokuEventType) {
+                    continue;
+                }
                 switch (herokuEventType) {
                     case "chat.completion": // Non-streaming chat completion (can appear in agent stream)
                     case "chat.completion.chunk": // Streaming chat completion chunk (contains delta)
@@ -302,21 +316,21 @@ export class HerokuMiaAgent extends BaseChatModel {
                                     type: "tool_call_chunk",
                                     index: tc.index ?? index,
                                 }));
+                                // Notify callback manager about tool calls for tracing
+                                for (const toolCall of delta.tool_calls) {
+                                    if (runManager && toolCall.function?.name) {
+                                        await runManager.handleLLMNewToken(`\n[Tool Call: ${toolCall.function.name}]\n`);
+                                    }
+                                }
                             }
                             yield new AIMessageChunk({
                                 content: content,
                                 tool_call_chunks: toolCallChunks,
                                 additional_kwargs: {
-                                    heroku_agent_event: herokuEventType,
                                     finish_reason: choice.finish_reason,
                                     usage: eventDataJSON.usage, // Include usage if present
-                                    // any other relevant fields from eventDataJSON or choice
                                 },
                             });
-                            if (choice.finish_reason &&
-                                choice.finish_reason !== "tool_calls") {
-                                runManager?.handleLLMEnd({ generations: [] }); // Consider what to pass here
-                            }
                         }
                         break;
                     // Case for tool.call from SPECS.md: event: "tool.call", data: {id, name, input}
@@ -338,22 +352,25 @@ export class HerokuMiaAgent extends BaseChatModel {
                         yield new AIMessageChunk({
                             content: "",
                             tool_call_chunks: [toolCallChunk],
-                            additional_kwargs: { heroku_agent_event: "tool.call" },
+                            additional_kwargs: {},
                         });
                         break;
                     case "tool.completion": // As seen in terminal output: object: "tool.completion"
-                        const toolCompletionData = eventDataJSON.choices?.[0]?.message || eventDataJSON; // data might be directly the message or nested
-                        yield new AIMessageChunk({
-                            content: "",
-                            additional_kwargs: {
-                                heroku_agent_event: "tool.completion",
-                                id: toolCompletionData.tool_call_id || toolCompletionData.id, // Prefer tool_call_id if present
-                                name: toolCompletionData.name, // Name of the tool that was called
-                                // Output might be in toolCompletionData.content or toolCompletionData directly
-                                output: toolCompletionData.content ||
-                                    JSON.stringify(toolCompletionData), // Capture the output
-                            },
-                        });
+                        const toolCompletionData = eventDataJSON.choices?.[0]?.message;
+                        if (toolCompletionData) {
+                            // Notify callback manager about tool result for tracing
+                            if (runManager && toolCompletionData.name && toolCompletionData.content) {
+                                await runManager.handleLLMNewToken(`\n[Tool Result: ${toolCompletionData.name}] ${toolCompletionData.content}\n`);
+                            }
+                            yield new AIMessageChunk({
+                                content: "",
+                                additional_kwargs: {
+                                    tool_call_id: toolCompletionData.tool_call_id,
+                                    tool_name: toolCompletionData.name,
+                                    tool_result: toolCompletionData.content,
+                                },
+                            });
+                        }
                         break;
                     case "tool.error": // As per SPECS
                         const toolErrorData = eventDataJSON;
@@ -361,10 +378,9 @@ export class HerokuMiaAgent extends BaseChatModel {
                         yield new AIMessageChunk({
                             content: "",
                             additional_kwargs: {
-                                heroku_agent_event: "tool.error",
-                                id: toolErrorData.id,
-                                name: toolErrorData.name,
-                                error: toolErrorData.error,
+                                tool_error: toolErrorData.error,
+                                tool_id: toolErrorData.id,
+                                tool_name: toolErrorData.name,
                             },
                         });
                         break;
@@ -392,21 +408,19 @@ export class HerokuMiaAgent extends BaseChatModel {
                         yield new AIMessageChunk({
                             content: "",
                             additional_kwargs: {
-                                heroku_agent_event: "unknown",
-                                event_object_type: herokuEventType,
-                                data: eventDataJSON,
+                                unknown_event_type: herokuEventType,
+                                event_data: eventDataJSON,
                             },
                         });
                         break;
                 }
             }
         }
-        catch (error) {
-            runManager?.handleLLMError(error);
-            // Re-throw if not already a HerokuApiError or to add more context
-            if (error instanceof HerokuApiError)
-                throw error;
-            throw new HerokuApiError("Error processing Heroku Agent SSE stream", undefined, error);
+        catch (streamError) {
+            if (runManager) {
+                await runManager.handleLLMError(streamError);
+            }
+            throw streamError;
         }
     }
 }

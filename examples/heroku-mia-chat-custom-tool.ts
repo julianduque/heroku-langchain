@@ -1,6 +1,7 @@
 import { HerokuMia } from "../src"; // Adjusted for local example structure
 import { HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 import { DynamicTool } from "@langchain/core/tools";
+import { RunnableLambda } from "@langchain/core/runnables";
 
 // Define a custom Node.js function to be used as a tool
 async function getCurrentWeather(
@@ -65,43 +66,76 @@ async function main() {
     temperature: 0.2,
   });
 
-  const messages: (HumanMessage | AIMessage | ToolMessage)[] = [
+  // Bind tools to the LLM - this ensures proper tracing context
+  const llmWithTools = llm.bindTools([weatherTool]);
+
+  const tools = [weatherTool];
+
+  // Create a runnable that handles the entire tool calling loop within a single trace
+  const toolCallingAgent = RunnableLambda.from(
+    async (
+      input: { messages: (HumanMessage | AIMessage | ToolMessage)[] },
+      config,
+    ) => {
+      const messages = [...input.messages];
+
+      console.log("\nInitial LLM call with tool...");
+      let aiResponse = await llmWithTools.invoke(messages, config);
+
+      messages.push(aiResponse as AIMessage);
+      console.log("LLM Response 1:", aiResponse.content);
+      console.log("Tool Calls:", aiResponse.tool_calls);
+
+      // Handle tool calls within the same runnable context
+      if (aiResponse.tool_calls && aiResponse.tool_calls.length > 0) {
+        for (const toolCall of aiResponse.tool_calls) {
+          console.log(`\nExecuting tool: ${toolCall.name}`);
+
+          // Find and execute the tool
+          const toolToCall = tools.find((t) => t.name === toolCall.name);
+          if (toolToCall) {
+            const toolOutput = await toolToCall.invoke(toolCall.args, config);
+            console.log(
+              `Tool output for ${toolCall.name} (id: ${toolCall.id}):`,
+              toolOutput,
+            );
+
+            // Add tool message to conversation
+            messages.push(
+              new ToolMessage({
+                content: toolOutput,
+                tool_call_id: toolCall.id!,
+              }),
+            );
+          }
+        }
+
+        console.log("\nLLM call after tool execution...");
+        // Continue conversation with tool results
+        aiResponse = await llmWithTools.invoke(messages, config);
+        messages.push(aiResponse as AIMessage);
+        console.log(
+          "LLM Response 2 (after tool execution):",
+          aiResponse.content,
+        );
+      }
+
+      return {
+        messages,
+        finalResponse: aiResponse.content,
+      };
+    },
+  );
+
+  const initialMessages = [
     new HumanMessage("What is the weather like in London?"),
   ];
 
   try {
-    console.log("\nInitial LLM call with tool...");
-    let aiResponse = await llm.invoke(messages, {
-      tools: [weatherTool as any], // Cast to any if StructuredTool vs DynamicTool causes issues with HerokuFunctionTool conversion
-    });
-
-    messages.push(aiResponse as AIMessage);
-    console.log("LLM Response 1:", aiResponse.content);
-    console.log("Tool Calls:", aiResponse.tool_calls);
-
-    // Loop to handle tool calls (simplified loop for one tool call)
-    if (aiResponse.tool_calls && aiResponse.tool_calls.length > 0) {
-      for (const toolCall of aiResponse.tool_calls) {
-        console.log(`\nExecuting tool: ${toolCall.name}`);
-        const toolOutput = await weatherTool.call(toolCall.args, {
-          // You can pass callbacks here if needed for tracing tool execution
-        });
-        console.log(
-          `Tool output for ${toolCall.name} (id: ${toolCall.id}):`,
-          toolOutput,
-        );
-        messages.push(
-          new ToolMessage({ content: toolOutput, tool_call_id: toolCall.id! }),
-        );
-      }
-
-      console.log("\nLLM call after tool execution...");
-      aiResponse = await llm.invoke(messages, {
-        tools: [weatherTool as any],
-      });
-      messages.push(aiResponse as AIMessage);
-      console.log("LLM Response 2 (after tool execution):", aiResponse.content);
-    }
+    // Execute the entire tool calling sequence within a single trace
+    const result = await toolCallingAgent.invoke({ messages: initialMessages });
+    console.log("\n--- Final Result ---");
+    console.log("Final Response:", result.finalResponse);
   } catch (error) {
     console.error("Error during custom tool example:", error);
   }

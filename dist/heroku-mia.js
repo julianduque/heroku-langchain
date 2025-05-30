@@ -1,5 +1,8 @@
 import { BaseChatModel, } from "@langchain/core/language_models/chat_models";
 import { AIMessage, AIMessageChunk, } from "@langchain/core/messages";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import { JsonOutputKeyToolsParser } from "@langchain/core/output_parsers/openai_tools";
+import { RunnablePassthrough, RunnableSequence, } from "@langchain/core/runnables";
 import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, langchainToolsToHerokuTools, HerokuApiError, } from "./common";
 import { parseHerokuSSE } from "./common";
 export class HerokuMia extends BaseChatModel {
@@ -9,8 +12,8 @@ export class HerokuMia extends BaseChatModel {
     maxTokens;
     stop;
     topP;
-    herokuApiKey;
-    herokuApiUrl;
+    apiKey;
+    apiUrl;
     maxRetries;
     timeout;
     streaming;
@@ -32,8 +35,8 @@ export class HerokuMia extends BaseChatModel {
         this.maxTokens = fields.maxTokens;
         this.stop = fields.stop;
         this.topP = fields.topP ?? 0.999;
-        this.herokuApiKey = fields.herokuApiKey;
-        this.herokuApiUrl = fields.herokuApiUrl;
+        this.apiKey = fields.apiKey;
+        this.apiUrl = fields.apiUrl;
         this.maxRetries = fields.maxRetries ?? 2;
         this.timeout = fields.timeout;
         this.streaming = fields.streaming ?? fields.stream ?? false;
@@ -49,11 +52,34 @@ export class HerokuMia extends BaseChatModel {
      * @returns A new instance of this chat model with the tools bound.
      */
     bindTools(tools) {
-        const herokuTools = langchainToolsToHerokuTools(tools); // Cast as StructuredTool[] for now
-        return this.bind({
-            tools: herokuTools, // Pass the Heroku-formatted tools
-            tool_choice: "auto", // Or other specific tool_choice if needed by default
+        const herokuTools = langchainToolsToHerokuTools(tools);
+        // Create a new HerokuMia instance with the same configuration but with tools pre-bound
+        const boundInstance = new HerokuMia({
+            model: this.model,
+            temperature: this.temperature,
+            maxTokens: this.maxTokens,
+            stop: this.stop,
+            topP: this.topP,
+            apiKey: this.apiKey,
+            apiUrl: this.apiUrl,
+            maxRetries: this.maxRetries,
+            timeout: this.timeout,
+            streaming: this.streaming,
+            additionalKwargs: this.additionalKwargs,
         });
+        // Override the invocationParams method to include the bound tools
+        const originalInvocationParams = boundInstance.invocationParams.bind(boundInstance);
+        boundInstance.invocationParams = function (options) {
+            const params = originalInvocationParams(options);
+            // Merge bound tools with any tools passed in options
+            const combinedTools = [...(herokuTools || []), ...(params.tools || [])];
+            return {
+                ...params,
+                tools: combinedTools.length > 0 ? combinedTools : undefined,
+                tool_choice: params.tool_choice || "auto",
+            };
+        };
+        return boundInstance;
     }
     /**
      * Get the parameters used to invoke the model.
@@ -103,7 +129,7 @@ export class HerokuMia extends BaseChatModel {
         return { ...constructorParams, ...runtimeParams };
     }
     async _generate(messages, options, runManager) {
-        const herokuConfig = getHerokuConfigOptions(this.herokuApiKey, this.herokuApiUrl, "/v1/chat/completions");
+        const herokuConfig = getHerokuConfigOptions(this.apiKey, this.apiUrl, "/v1/chat/completions");
         const herokuMessages = langchainMessagesToHerokuMessages(messages);
         const params = this.invocationParams(options);
         const requestPayload = {
@@ -194,7 +220,7 @@ export class HerokuMia extends BaseChatModel {
                     if (parsedEvent.event === "done") {
                         // Potentially parse final data if it contains usage or status
                         // For now, we just break or let the stream end naturally.
-                        console.log("SSE stream 'done' event received:", parsedEvent.data);
+                        // console.log("SSE stream 'done' event received:", parsedEvent.data);
                         break;
                     }
                     if (parsedEvent.data) {
@@ -212,27 +238,21 @@ export class HerokuMia extends BaseChatModel {
                                 }
                                 if (delta.tool_calls && delta.tool_calls.length > 0) {
                                     currentToolCallChunks = delta.tool_calls.map((tcChunk, tcChunkIndex) => {
-                                        // tcChunk is Partial<HerokuToolCall>
-                                        // LangChain's ToolCallChunk expects an index to group parts of the same tool call.
-                                        // If Heroku provides an `index` within its tcChunk, use it.
-                                        // Otherwise, use the index from the array map if multiple tool_calls are in one delta.
-                                        // The SPECS.md does not specify `index` on HerokuToolCall in streaming delta.
-                                        // We will rely on the tcChunkIndex from the map for now or if Heroku adds it later.
                                         return {
                                             name: tcChunk.function?.name,
                                             args: tcChunk.function?.arguments,
                                             id: tcChunk.id,
-                                            index: tcChunk.index ?? tcChunkIndex, // Prefer Heroku's index if present, else map index
-                                            type: "tool_call_chunk", // Keep as const for type field
+                                            index: tcChunk.index ?? tcChunkIndex,
+                                            type: "tool_call_chunk",
                                         };
                                     });
                                     toolCallChunks.push(...currentToolCallChunks);
                                 }
-                                const { tool_calls: _deltaToolCalls, ...remainingDelta } = delta; // Exclude tool_calls from delta for additional_kwargs
+                                const { tool_calls: _deltaToolCalls, ...remainingDelta } = delta;
                                 allAIMessageChunks.push(new AIMessageChunk({
                                     content: currentChunkContent || "",
-                                    tool_call_chunks: currentToolCallChunks, // Cast to any if AIMessageChunk expects official ToolCallChunk[]
-                                    additional_kwargs: { ...remainingDelta }, // Store remaining delta fields
+                                    tool_call_chunks: currentToolCallChunks,
+                                    additional_kwargs: { ...remainingDelta },
                                 }));
                                 if (choice.finish_reason) {
                                     finalFinishReason = choice.finish_reason;
@@ -240,37 +260,76 @@ export class HerokuMia extends BaseChatModel {
                             }
                         }
                         catch (e) {
-                            console.error("Error parsing SSE data chunk:", e, "Raw data:", parsedEvent.data);
-                            // Decide if this error is fatal for the stream
+                            runManager?.handleLLMError(e);
                             throw new HerokuApiError("Failed to parse SSE data chunk", undefined, { data: parsedEvent.data, error: e.message });
                         }
                     }
                 }
             }
             catch (streamError) {
-                // Catch errors from parseHerokuSSE or from processing inside the loop
-                console.error("Error processing Heroku SSE stream:", streamError);
-                throw streamError; // Re-throw to be caught by the outer try/catch or handled by caller
+                runManager?.handleLLMError(streamError);
+                throw streamError;
             }
             // After the loop, construct the final ChatGeneration from aggregated data
-            const finalMessageChunk = new AIMessageChunk({
+            const aggregatedToolCalls = [];
+            if (toolCallChunks.length > 0) {
+                const toolCallMap = new Map();
+                toolCallChunks.forEach((chunk) => {
+                    if (!chunk.id)
+                        return;
+                    let entry = toolCallMap.get(chunk.id);
+                    if (!entry) {
+                        entry = { argsSlices: [], index: chunk.index };
+                        toolCallMap.set(chunk.id, entry);
+                    }
+                    if (chunk.name)
+                        entry.name = chunk.name;
+                    if (chunk.args !== undefined)
+                        entry.argsSlices?.push(chunk.args);
+                });
+                toolCallMap.forEach((assembledTc, id) => {
+                    if (assembledTc.name &&
+                        assembledTc.argsSlices &&
+                        assembledTc.argsSlices.length > 0) {
+                        const fullArgsString = assembledTc.argsSlices.join("");
+                        try {
+                            aggregatedToolCalls.push({
+                                id,
+                                name: assembledTc.name,
+                                args: JSON.parse(fullArgsString),
+                                type: "tool_call",
+                            });
+                        }
+                        catch (e) {
+                            console.warn(`[HerokuMia] Failed to parse tool call arguments for id ${id}: ${fullArgsString}`, e);
+                            aggregatedToolCalls.push({
+                                id,
+                                name: assembledTc.name,
+                                args: fullArgsString, // Keep as string if parsing failed
+                                type: "tool_call",
+                            });
+                        }
+                    }
+                });
+            }
+            const finalMessage = new AIMessage({
                 content: aggregatedContent,
-                tool_calls: [], // Full tool_calls are constructed from tool_call_chunks by AIMessage
-                tool_call_chunks: toolCallChunks.length > 0 ? toolCallChunks : undefined, // Cast to any for AIMessageChunk
-                // additional_kwargs can be used if needed
+                tool_calls: aggregatedToolCalls.length > 0 ? aggregatedToolCalls : undefined,
+                // tool_call_chunks are not typically part of a final AIMessage, they are for streaming.
+                // If any other specific kwargs from the last chunk or overall stream are needed, add them here.
+                additional_kwargs: { finish_reason: finalFinishReason },
             });
             const generation = {
-                message: finalMessageChunk, // LangChain will handle merging chunks internally if this is used in a chain
-                text: aggregatedContent, // The full text content
+                message: finalMessage,
+                text: aggregatedContent,
                 generationInfo: {
                     finish_reason: finalFinishReason,
-                    // Potentially add aggregated usage data if available
                 },
             };
             return {
                 generations: [generation],
                 llmOutput: {
-                /* tokenUsage: finalUsage */
+                // tokenUsage might be available from a final SSE event if Heroku sends it
                 },
             };
         }
@@ -278,24 +337,29 @@ export class HerokuMia extends BaseChatModel {
             // Non-streaming response handling
             const herokuResponse = await response.json();
             const choice = herokuResponse.choices[0];
-            const toolCalls = choice.message.tool_calls?.map((tc) => ({
+            const parsedToolCalls = choice.message.tool_calls?.map((tc) => ({
                 id: tc.id,
                 name: tc.function.name,
                 args: JSON.parse(tc.function.arguments), // Heroku sends arguments as JSON string
-                type: "tool_call", // Ensure literal type for LangChain ToolCall
+                type: "tool_call",
             }));
+            // Destructure choice.message to separate standard fields from true additional_kwargs
+            const { role: _role, // Already handled by AIMessage type
+            content: msgContent, tool_calls: _rawToolCalls, // Already parsed into parsedToolCalls
+            ...restOfMessage // These are the true additional_kwargs
+             } = choice.message;
             const generation = {
                 message: new AIMessage({
-                    content: choice.message.content || "",
-                    tool_calls: toolCalls,
-                    additional_kwargs: { ...choice.message },
+                    content: msgContent || "",
+                    tool_calls: parsedToolCalls,
+                    additional_kwargs: restOfMessage, // Use only the remaining fields
                 }),
-                text: choice.message.content || "",
+                text: msgContent || "",
                 generationInfo: {
-                    ...(choice.message.role && { role: choice.message.role }), // Add role if present
-                    ...(choice.message.name && { name: choice.message.name }), // Add name if present
-                    finish_reason: choice.finish_reason, // Explicitly use choice's finish_reason
+                    finish_reason: choice.finish_reason,
                     index: choice.index,
+                    // If restOfMessage contained other relevant top-level choice fields, they could be added here too
+                    // e.g., if Heroku adds something like 'system_fingerprint' at the choice.message level
                 },
             };
             const llmOutput = {
@@ -306,7 +370,7 @@ export class HerokuMia extends BaseChatModel {
         }
     }
     async *_stream(messages, options, runManager) {
-        const herokuConfig = getHerokuConfigOptions(this.herokuApiKey, this.herokuApiUrl, "/v1/chat/completions");
+        const herokuConfig = getHerokuConfigOptions(this.apiKey, this.apiUrl, "/v1/chat/completions");
         const herokuMessages = langchainMessagesToHerokuMessages(messages);
         // Ensure stream is true for this path, overriding constructor/defaults
         const params = this.invocationParams({
@@ -394,7 +458,6 @@ export class HerokuMia extends BaseChatModel {
             if (parsedEvent.event === "done") {
                 // Heroku specific: if 'done' event signals end, could break.
                 // Otherwise, stream ends when parseHerokuSSE completes.
-                runManager?.handleLLMEnd({ generations: [] }); // Pass empty generations
                 break;
             }
             if (parsedEvent.data) {
@@ -407,7 +470,6 @@ export class HerokuMia extends BaseChatModel {
                         let currentToolCallChunks = undefined;
                         if (delta.content) {
                             currentChunkContent = delta.content;
-                            runManager?.handleLLMNewToken(delta.content);
                         }
                         if (delta.tool_calls && delta.tool_calls.length > 0) {
                             currentToolCallChunks = delta.tool_calls.map((tcChunk, tcChunkIndex) => ({
@@ -442,6 +504,166 @@ export class HerokuMia extends BaseChatModel {
                 }
             }
         }
+    }
+    withStructuredOutput(outputSchema, config) {
+        // Handle the case where outputSchema is a StructuredOutputMethodParams object
+        let schema;
+        let name;
+        let description;
+        let method;
+        let includeRaw;
+        if (this.isStructuredOutputMethodParams(outputSchema)) {
+            schema = outputSchema.schema;
+            name = outputSchema.name;
+            description = outputSchema.description;
+            method = outputSchema.method;
+            includeRaw = outputSchema.includeRaw;
+        }
+        else {
+            schema = outputSchema;
+            name = config?.name;
+            description = config?.description;
+            method = config?.method;
+            includeRaw = config?.includeRaw;
+        }
+        // Default values
+        const functionName = name ?? "extract";
+        method = method ?? "functionCalling";
+        if (method === "jsonMode") {
+            throw new Error("HerokuMia does not support 'jsonMode'. Use 'functionCalling' instead.");
+        }
+        let llm;
+        let outputParser;
+        if (this.isZodSchema(schema)) {
+            // Convert Zod schema to JSON schema
+            const asJsonSchema = zodToJsonSchema(schema);
+            // Remove $schema field as Heroku API doesn't accept it
+            const { $schema: _$schema, ...cleanParameters } = asJsonSchema;
+            // Create the tool definition
+            const tool = {
+                type: "function",
+                function: {
+                    name: functionName,
+                    description: description ??
+                        asJsonSchema.description ??
+                        "A function available to call.",
+                    parameters: cleanParameters,
+                },
+            };
+            // Create a new HerokuMia instance with the same configuration but with tools pre-bound
+            llm = new HerokuMia({
+                model: this.model,
+                temperature: this.temperature,
+                maxTokens: this.maxTokens,
+                stop: this.stop,
+                topP: this.topP,
+                apiKey: this.apiKey,
+                apiUrl: this.apiUrl,
+                maxRetries: this.maxRetries,
+                timeout: this.timeout,
+                streaming: this.streaming,
+                additionalKwargs: this.additionalKwargs,
+            });
+            // Override the invocationParams method to include the bound tools and force tool choice
+            const originalInvocationParams = llm.invocationParams.bind(llm);
+            llm.invocationParams = function (options) {
+                const params = originalInvocationParams(options);
+                // Directly pass the tool schema instead of using langchainToolsToHerokuTools
+                // since we're not dealing with actual StructuredTool instances
+                return {
+                    ...params,
+                    tools: [tool],
+                    tool_choice: {
+                        type: "function",
+                        function: { name: functionName },
+                    },
+                };
+            };
+            // Create output parser
+            outputParser = new JsonOutputKeyToolsParser({
+                returnSingle: true,
+                keyName: functionName,
+                zodSchema: schema,
+            });
+        }
+        else {
+            // Handle JSON schema
+            const tool = {
+                type: "function",
+                function: {
+                    name: functionName,
+                    description: description ??
+                        schema.description ??
+                        "A function available to call.",
+                    parameters: schema,
+                },
+            };
+            // Create a new HerokuMia instance with the same configuration but with tools pre-bound
+            llm = new HerokuMia({
+                model: this.model,
+                temperature: this.temperature,
+                maxTokens: this.maxTokens,
+                stop: this.stop,
+                topP: this.topP,
+                apiKey: this.apiKey,
+                apiUrl: this.apiUrl,
+                maxRetries: this.maxRetries,
+                timeout: this.timeout,
+                streaming: this.streaming,
+                additionalKwargs: this.additionalKwargs,
+            });
+            // Override the invocationParams method to include the bound tools and force tool choice
+            const originalInvocationParams = llm.invocationParams.bind(llm);
+            llm.invocationParams = function (options) {
+                const params = originalInvocationParams(options);
+                // Directly pass the tool schema instead of using langchainToolsToHerokuTools
+                // since we're not dealing with actual StructuredTool instances
+                return {
+                    ...params,
+                    tools: [tool],
+                    tool_choice: {
+                        type: "function",
+                        function: { name: functionName },
+                    },
+                };
+            };
+            // Create output parser
+            outputParser = new JsonOutputKeyToolsParser({
+                returnSingle: true,
+                keyName: functionName,
+            });
+        }
+        if (!includeRaw) {
+            return llm.pipe(outputParser);
+        }
+        // Handle includeRaw case
+        const parserAssign = RunnablePassthrough.assign({
+            parsed: (input, config) => outputParser.invoke(input.raw, config),
+        });
+        const parserNone = RunnablePassthrough.assign({
+            parsed: () => null,
+        });
+        const parsedWithFallback = parserAssign.withFallbacks({
+            fallbacks: [parserNone],
+        });
+        return RunnableSequence.from([
+            {
+                raw: llm,
+            },
+            parsedWithFallback,
+        ]);
+    }
+    /**
+     * Helper method to check if input is a Zod schema
+     */
+    isZodSchema(input) {
+        return typeof input?.parse === "function";
+    }
+    /**
+     * Helper method to check if input is StructuredOutputMethodParams
+     */
+    isStructuredOutputMethodParams(input) {
+        return input !== undefined && typeof input.schema === "object";
     }
 }
 //# sourceMappingURL=heroku-mia.js.map

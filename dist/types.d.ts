@@ -46,13 +46,13 @@ export interface HerokuMiaFields extends BaseChatModelParams {
      * If not provided, the library will check the environment variable INFERENCE_KEY.
      * Used for authentication.
      */
-    herokuApiKey?: string;
+    apiKey?: string;
     /**
      * Heroku Inference API Base URL (INFERENCE_URL).
      * If not provided, checks env var INFERENCE_URL or uses a sensible Heroku default.
      * The endpoint path is /v1/chat/completions.
      */
-    herokuApiUrl?: string;
+    apiUrl?: string;
     /**
      * Maximum number of retries for failed requests.
      * Standard LangChain parameter for resilience.
@@ -281,9 +281,9 @@ export interface HerokuMiaAgentFields extends BaseChatModelParams {
     /** List of heroku_tool or mcp tools the agent is allowed to use. */
     tools?: HerokuAgentToolDefinition[];
     /** Heroku API Key. Reads from env HEROKU_API_KEY if not provided. */
-    herokuApiKey?: string;
+    apiKey?: string;
     /** Heroku API Base URL. Defaults to inference.heroku.com. */
-    herokuApiUrl?: string;
+    apiUrl?: string;
     /** Max retries for API calls @default 2 */
     maxRetries?: number;
     /** Timeout for API calls in ms */
@@ -309,7 +309,7 @@ export interface HerokuAgentToolDefinition {
     type: "heroku_tool" | "mcp";
     name: string;
     description?: string;
-    runtime_params: {
+    runtime_params?: {
         target_app_name: string;
         dyno_size?: string;
         ttl_seconds?: number;
