@@ -17,7 +17,7 @@ Common utilities and types for `@langchain/heroku` library, supporting both `Her
 
 ## Future Tasks
 
-- [ ] Unit tests for all shared utilities.
+- [x] Unit tests for all shared utilities.
 
 ## Implementation Plan
 

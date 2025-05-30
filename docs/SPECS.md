@@ -56,8 +56,8 @@ HerokuMia enables developers to utilize Heroku-hosted LLMs in a manner analogous
 import { HerokuMia } from "@langchain/heroku";
 import { HumanMessage } from "@langchain/core/messages";
 const llm = new HerokuMia({
-  // herokuApiKey: "your\_inference\_key", // Can be set via env HEROKU\_API\_KEY
-  // herokuApiUrl: "your\_inference\_url", // Can be set via env HEROKU\_API\_URL
+  // apiKey: "your\_inference\_key", // Can be set via env HEROKU\_API\_KEY
+  // apiUrl: "your\_inference\_url", // Can be set via env HEROKU\_API\_URL
   model: "claude-3-7-sonnet", // Model ID as per Heroku documentation \[3\]
   temperature: 0.5, // Controls randomness \[3\]
   maxTokens: 1024, // Max tokens for generation, maps to 'max\_tokens' \[3\]
@@ -99,8 +99,8 @@ The constructor for HerokuMia will accept an optional fields object of type Hero
 | stop             | string                | List of strings that stop generation.                                                                 | stop                  | null 3                               | No       | Parameter from Heroku API.3                                                                                                |
 | stream           | boolean               | Whether to stream responses. If true, invoke will still return a complete response. Used by stream(). | stream                | false 3                              | No       | Heroku API parameter.3 This field sets a default; actual streaming is primarily determined by calling the stream() method. |
 | topP             | number (0.0 to 1.0)   | Proportion of tokens to consider (cumulative probability).                                            | top_p                 | 0.999 3                              | No       | Maps to top_p in Heroku API.3 LangChain commonly uses topP.                                                                |
-| herokuApiKey     | string                | Heroku Inference API Key (INFERENCE_KEY).                                                             | Authorization Header  | process.env.INFERENCE_KEY            | No       | If not provided, the library will check the environment variable. Used for authentication.3                                |
-| herokuApiUrl     | string                | Heroku Inference API Base URL (INFERENCE_URL).                                                        | (Request URL)         | process.env.INFERENCE_URL or default | No       | If not provided, checks env var or uses a sensible Heroku default. The endpoint path is /v1/chat/completions.2             |
+| apiKey           | string                | Heroku Inference API Key (INFERENCE_KEY).                                                             | Authorization Header  | process.env.INFERENCE_KEY            | No       | If not provided, the library will check the environment variable. Used for authentication.3                                |
+| apiUrl           | string                | Heroku Inference API Base URL (INFERENCE_URL).                                                        | (Request URL)         | process.env.INFERENCE_URL or default | No       | If not provided, checks env var or uses a sensible Heroku default. The endpoint path is /v1/chat/completions.2             |
 | maxRetries       | number                | Maximum number of retries for failed requests.                                                        | N/A (Client-side)     | 2 8                                  | No       | Standard LangChain parameter for resilience.                                                                               |
 | timeout          | number (milliseconds) | Timeout for API requests.                                                                             | N/A (Client-side)     | (LangChain common default) 8         | No       | Standard LangChain parameter for request duration control.                                                                 |
 | streaming        | boolean               | Alias for stream for consistency. Sets default for internal \_generate method's streaming behavior.   | stream                | false                                | No       |                                                                                                                            |
@@ -224,8 +224,8 @@ import { HerokuMiaAgent } from "@langchain/heroku";
 import { HumanMessage } from "@langchain/core/messages";
 
 const agentExecutor \= new HerokuMiaAgent({
-    // herokuApiKey: "your\_inference\_key",
-    // herokuApiUrl: "your\_inference\_url",
+    // apiKey: "your\_inference\_key",
+    // apiUrl: "your\_inference\_url",
     model: "claude-3-7-sonnet", // Or other agent-compatible model
     tools:  [
       {
@@ -293,8 +293,8 @@ The constructor will accept an optional fields object of type HerokuMiaAgentFiel
 | stop                | string                    | List of strings that stop generation for the agent's LLM.                                            | stop                             | null 4                               | No       | Parameter from Heroku API.4                                                           |
 | topP                | number (0.0 to 1.0)       | Proportion of tokens to consider for the agent's LLM.                                                | top_p                            | 0.999 4                              | No       | Maps to top_p in Heroku API.4                                                         |
 | tools               | HerokuAgentToolDefinition | List of heroku_tool or mcp tools the agent is allowed to use (see Section 3.5.1).                    | tools                            | null 4                               | No       | Tool definitions specific to the agent endpoint.4 Structure defined in Section 3.5.1. |
-| herokuApiKey        | string                    | Heroku Inference API Key (INFERENCE_KEY).                                                            | Authorization Header             | process.env.INFERENCE_KEY            | No       | Shared with HerokuMia.                                                                |
-| herokuApiUrl        | string                    | Heroku Inference API Base URL (INFERENCE_URL).                                                       | (Request URL)                    | process.env.INFERENCE_URL or default | No       | Endpoint path for agents is /v1/agents/heroku.2                                       |
+| apiKey              | string                    | Heroku Inference API Key (INFERENCE_KEY).                                                            | Authorization Header             | process.env.INFERENCE_KEY            | No       | Shared with HerokuMia.                                                                |
+| apiUrl              | string                    | Heroku Inference API Base URL (INFERENCE_URL).                                                       | (Request URL)                    | process.env.INFERENCE_URL or default | No       | Endpoint path for agents is /v1/agents/heroku.2                                       |
 | maxRetries          | number                    | Max retries for the initial request to the agent endpoint.                                           | N/A (Client-side)                | 2                                    | No       | Standard LangChain parameter for resilience.                                          |
 | timeout             | number (milliseconds)     | Timeout for the initial request. Note: The SSE stream itself can be long-lived.                      | N/A (Client-side)                |                                      | No       | Controls timeout for establishing the connection.                                     |
 | additionalKwargs    | Record\<string, any\>     | Allows passing any other Heroku-specific agent parameters not explicitly defined in the constructor. | (Varies)                         | {}                                   | No       | For future-proofing or less common parameters.                                        |
@@ -422,8 +422,8 @@ Several functionalities will be common to both HerokuMia and HerokuMiaAgent to e
 
 A centralized authentication mechanism will be implemented:
 
-- **API Key (INFERENCE_KEY):** The Heroku Inference API key will be accepted via a constructor parameter (e.g., herokuApiKey). If this parameter is not provided, the library will attempt to read the key from the INFERENCE_KEY environment variable. An error will be thrown if the API key cannot be found.
-- **API URL (INFERENCE_URL):** The base URL for the Heroku Inference API will be accepted via a constructor parameter (e.g., herokuApiUrl). If not provided, it will fall back to the INFERENCE_URL environment variable. If neither is available, a default Heroku base URL (e.g., https://inference.heroku.com, if such a standard URL is published by Heroku) will be used. The specific endpoint paths (/v1/chat/completions or /v1/agents/heroku) will be appended by the respective classes (HerokuMia or HerokuMiaAgent).
+- **API Key (INFERENCE_KEY):** The Heroku Inference API key will be accepted via a constructor parameter (e.g., apiKey). If this parameter is not provided, the library will attempt to read the key from the INFERENCE_KEY environment variable. An error will be thrown if the API key cannot be found.
+- **API URL (INFERENCE_URL):** The base URL for the Heroku Inference API will be accepted via a constructor parameter (e.g., apiUrl). If not provided, it will fall back to the INFERENCE_URL environment variable. If neither is available, a default Heroku base URL (e.g., https://inference.heroku.com, if such a standard URL is published by Heroku) will be used. The specific endpoint paths (/v1/chat/completions or /v1/agents/heroku) will be appended by the respective classes (HerokuMia or HerokuMiaAgent).
 - **Header Construction:** A utility function will be responsible for constructing the Authorization: Bearer \<INFERENCE_KEY\> header, which is required for all API requests to Heroku Inference services.
 
 ### **4.2. Common TypeScript Type Definitions**

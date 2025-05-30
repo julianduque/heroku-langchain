@@ -1,8 +1,6 @@
 import { BaseChatModel, } from "@langchain/core/language_models/chat_models";
 import { AIMessage, AIMessageChunk, } from "@langchain/core/messages";
-import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, HerokuApiError, parseHerokuSSE,
-// langchainToolsToHerokuTools, // If agent uses same tool format
- } from "./common";
+import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, HerokuApiError, parseHerokuSSE, } from "./common";
 export class HerokuMiaAgent extends BaseChatModel {
     model;
     temperature;
@@ -256,11 +254,13 @@ export class HerokuMiaAgent extends BaseChatModel {
                                     // Find the original tool definition to include runtime_params
                                     const originalTool = this.tools?.find((tool) => {
                                         // For heroku_tool, match by name
-                                        if (tool.type === "heroku_tool" && tool.name === tc.function?.name) {
+                                        if (tool.type === "heroku_tool" &&
+                                            tool.name === tc.function?.name) {
                                             return true;
                                         }
                                         // For mcp tools, match by name (which includes the full mcp path)
-                                        if (tool.type === "mcp" && tool.name === tc.function?.name) {
+                                        if (tool.type === "mcp" &&
+                                            tool.name === tc.function?.name) {
                                             return true;
                                         }
                                         return false;
@@ -277,8 +277,10 @@ export class HerokuMiaAgent extends BaseChatModel {
                                     if (originalTool) {
                                         toolCallInfo.original_tool_definition = originalTool;
                                         // Specifically include runtime_params for heroku_tool types
-                                        if (originalTool.type === "heroku_tool" && originalTool.runtime_params) {
-                                            toolCallInfo.runtime_params = originalTool.runtime_params;
+                                        if (originalTool.type === "heroku_tool" &&
+                                            originalTool.runtime_params) {
+                                            toolCallInfo.runtime_params =
+                                                originalTool.runtime_params;
                                             // For heroku_tool, populate args with runtime_params for LangSmith display
                                             if (Object.keys(toolCallInfo.args).length === 0) {
                                                 toolCallInfo.args = {
@@ -295,16 +297,19 @@ export class HerokuMiaAgent extends BaseChatModel {
                                     if (runManager && toolCall.function?.name) {
                                         // Find the original tool for enhanced logging
                                         const originalTool = this.tools?.find((tool) => {
-                                            if (tool.type === "heroku_tool" && tool.name === toolCall.function?.name) {
+                                            if (tool.type === "heroku_tool" &&
+                                                tool.name === toolCall.function?.name) {
                                                 return true;
                                             }
-                                            if (tool.type === "mcp" && tool.name === toolCall.function?.name) {
+                                            if (tool.type === "mcp" &&
+                                                tool.name === toolCall.function?.name) {
                                                 return true;
                                             }
                                             return false;
                                         });
                                         let logMessage = `\n[Tool Call: ${toolCall.function.name}]`;
-                                        if (originalTool?.type === "heroku_tool" && originalTool.runtime_params) {
+                                        if (originalTool?.type === "heroku_tool" &&
+                                            originalTool.runtime_params) {
                                             logMessage += `\n  Runtime Params: ${JSON.stringify(originalTool.runtime_params, null, 2)}`;
                                         }
                                         if (originalTool?.type === "mcp") {
@@ -330,10 +335,12 @@ export class HerokuMiaAgent extends BaseChatModel {
                         if (toolCompletionData) {
                             // Find the original tool definition for enhanced logging
                             const originalTool = this.tools?.find((tool) => {
-                                if (tool.type === "heroku_tool" && tool.name === toolCompletionData.name) {
+                                if (tool.type === "heroku_tool" &&
+                                    tool.name === toolCompletionData.name) {
                                     return true;
                                 }
-                                if (tool.type === "mcp" && tool.name === toolCompletionData.name) {
+                                if (tool.type === "mcp" &&
+                                    tool.name === toolCompletionData.name) {
                                     return true;
                                 }
                                 return false;
@@ -343,7 +350,8 @@ export class HerokuMiaAgent extends BaseChatModel {
                                 toolCompletionData.name &&
                                 toolCompletionData.content) {
                                 let logMessage = `\n[Tool Result: ${toolCompletionData.name}]`;
-                                if (originalTool?.type === "heroku_tool" && originalTool.runtime_params) {
+                                if (originalTool?.type === "heroku_tool" &&
+                                    originalTool.runtime_params) {
                                     logMessage += `\n  Runtime Params: ${JSON.stringify(originalTool.runtime_params, null, 2)}`;
                                 }
                                 logMessage += `\n  Result: ${toolCompletionData.content}\n`;
@@ -358,9 +366,12 @@ export class HerokuMiaAgent extends BaseChatModel {
                             };
                             // Include original tool definition in response metadata
                             if (originalTool) {
-                                response_metadata.tool_results.original_tool_definition = originalTool;
-                                if (originalTool.type === "heroku_tool" && originalTool.runtime_params) {
-                                    response_metadata.tool_results.runtime_params = originalTool.runtime_params;
+                                response_metadata.tool_results.original_tool_definition =
+                                    originalTool;
+                                if (originalTool.type === "heroku_tool" &&
+                                    originalTool.runtime_params) {
+                                    response_metadata.tool_results.runtime_params =
+                                        originalTool.runtime_params;
                                 }
                             }
                             yield new AIMessageChunk({
@@ -378,7 +389,8 @@ export class HerokuMiaAgent extends BaseChatModel {
                         const toolErrorData = eventDataJSON;
                         // Find the original tool definition for enhanced error context
                         const originalErrorTool = this.tools?.find((tool) => {
-                            if (tool.type === "heroku_tool" && tool.name === toolErrorData.name) {
+                            if (tool.type === "heroku_tool" &&
+                                tool.name === toolErrorData.name) {
                                 return true;
                             }
                             if (tool.type === "mcp" && tool.name === toolErrorData.name) {
@@ -387,7 +399,8 @@ export class HerokuMiaAgent extends BaseChatModel {
                             return false;
                         });
                         let errorMessage = `Tool '${toolErrorData.name || toolErrorData.id}' failed: ${toolErrorData.error}`;
-                        if (originalErrorTool?.type === "heroku_tool" && originalErrorTool.runtime_params) {
+                        if (originalErrorTool?.type === "heroku_tool" &&
+                            originalErrorTool.runtime_params) {
                             errorMessage += `\n  Runtime Params: ${JSON.stringify(originalErrorTool.runtime_params, null, 2)}`;
                         }
                         runManager?.handleLLMError(new Error(errorMessage));
@@ -398,9 +411,12 @@ export class HerokuMiaAgent extends BaseChatModel {
                         };
                         // Include original tool definition in error context
                         if (originalErrorTool) {
-                            errorAdditionalKwargs.original_tool_definition = originalErrorTool;
-                            if (originalErrorTool.type === "heroku_tool" && originalErrorTool.runtime_params) {
-                                errorAdditionalKwargs.runtime_params = originalErrorTool.runtime_params;
+                            errorAdditionalKwargs.original_tool_definition =
+                                originalErrorTool;
+                            if (originalErrorTool.type === "heroku_tool" &&
+                                originalErrorTool.runtime_params) {
+                                errorAdditionalKwargs.runtime_params =
+                                    originalErrorTool.runtime_params;
                             }
                         }
                         yield new AIMessageChunk({

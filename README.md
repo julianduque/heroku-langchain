@@ -19,7 +19,7 @@ import { HumanMessage } from "@langchain/core/messages";
 async function main() {
   // Ensure INFERENCE_MODEL_ID and INFERENCE_KEY are set in your environment
   // or pass them directly to the constructor:
-  // const chat = new HerokuMia({ model: "your-model-id", herokuApiKey: "your-api-key" });
+  // const chat = new HerokuMia({ model: "your-model-id", apiKey: "your-api-key" });
   const chat = new HerokuMia({ model: "claude-3-7-sonnet" });
 
   const messages = [new HumanMessage("Hello, how are you doing today?")];
@@ -108,22 +108,23 @@ main();
 
 ### Using Agents
 
-The `HerokuMiaAgent` class allows for more autonomous interactions. Here is an example demonstrating its usage with a predefined Heroku tool:
+The `HerokuMiaAgent` class allows for more autonomous interactions with access to Heroku tools and MCP (Model Context Protocol) tools. Here's an example demonstrating agent usage:
 
 ```typescript
-import { HerokuMiaAgent } from "heroku-langchain"; // Use "../src" for local dev, "heroku-langchain" for published package
+import { HerokuMiaAgent } from "heroku-langchain";
 import { HumanMessage } from "@langchain/core/messages";
-import { HerokuAgentToolDefinition } from "heroku-langchain/types"; // Use "../src/types" for local dev
+import { HerokuAgentToolDefinition } from "heroku-langchain/types";
 
 async function agentExample() {
   console.log("Running HerokuMiaAgent Example...");
 
+  const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
   const tools: HerokuAgentToolDefinition[] = [
     {
       type: "heroku_tool",
       name: "dyno_run_command",
       runtime_params: {
-        target_app_name: "your-heroku-app-name", // Replace with your actual Heroku app name
+        target_app_name: appName,
         tool_params: {
           cmd: "date",
           description: "Gets the current date and time on the server.",
@@ -133,55 +134,120 @@ async function agentExample() {
     },
   ];
 
-  // Ensure INFERENCE_MODEL_ID and INFERENCE_KEY are set in your environment
-  // or pass them directly to the constructor, e.g.:
-  // const agentExecutor = new HerokuMiaAgent({
-  //   tools: tools,
-  //   model: "your-model-id", // Optional: if not set, INFERENCE_MODEL_ID env var is used
-  //   herokuApiKey: "your-api-key" // Optional: if not set, INFERENCE_KEY env var is used
-  // });
+  console.log(`📱 Using app: ${appName}`);
+  console.log("💡 Note: Make sure this app exists and you have access to it!");
+  console.log(
+    "   Set HEROKU_APP_NAME environment variable to use a different app.",
+  );
+
   const agentExecutor = new HerokuMiaAgent({
     tools: tools,
   });
 
   try {
+    console.log("\n=== Heroku Tool Execution ===");
     console.log("\nStreaming HerokuMiaAgent...");
+
     const stream = await agentExecutor.stream([
       new HumanMessage(
-        "What time is it on the app server named your-heroku-app-name?", // Adjust query to match your app name
+        "What time is it on the app server? Please use the available tools to check.",
       ),
     ]);
+
+    const toolCalls: any[] = [];
 
     for await (const chunk of stream) {
       if (chunk.content) {
         process.stdout.write(chunk.content as string);
       }
-      // Check for tool calls made by the agent
-      if (chunk.tool_call_chunks && chunk.tool_call_chunks.length > 0) {
-        console.log("\nAgent wants to call tools:", chunk.tool_call_chunks);
+
+      // Show tool calls if present in response_metadata
+      if (chunk.response_metadata?.tool_calls) {
+        for (const toolCall of chunk.response_metadata.tool_calls) {
+          console.log(
+            `\n🔧 Agent executed tool: ${toolCall.name} (${toolCall.id})`,
+          );
+          console.log(
+            "📋 Tool Call Details:",
+            JSON.stringify(toolCall, null, 2),
+          );
+          toolCalls.push(toolCall);
+        }
       }
-      // Check for tool results from Heroku
-      if (chunk.additional_kwargs?.tool_results) {
+
+      // Show tool results if present in additional_kwargs
+      if (chunk.additional_kwargs?.tool_result) {
+        const { tool_name, tool_result, tool_call_id } =
+          chunk.additional_kwargs;
         console.log(
-          "\nHeroku executed tool, result:",
-          chunk.additional_kwargs.tool_results,
+          `\n🛠️ Tool '${tool_name}' (${tool_call_id}) completed with result: ${tool_result}`,
         );
       }
-      // To see all additional_kwargs for different event types:
-      // if (
-      //   chunk.additional_kwargs &&
-      //   Object.keys(chunk.additional_kwargs).length > 0
-      // ) {
-      //   console.log("\nChunk additional_kwargs:", chunk.additional_kwargs);
-      // }
     }
-    console.log("\nStream ended.");
+
+    console.log(`\n✅ Stream ended. Tool calls executed: ${toolCalls.length}`);
   } catch (error) {
-    console.error("Error during agent stream:", error);
+    console.error("Error:", error);
   }
 }
 
 agentExample().catch(console.error);
+```
+
+#### Using MCP Tools
+
+You can also use MCP (Model Context Protocol) tools with the agent:
+
+```typescript
+import { HerokuMiaAgent } from "heroku-langchain";
+import { HumanMessage } from "@langchain/core/messages";
+import { HerokuAgentToolDefinition } from "heroku-langchain/types";
+
+async function mcpExample() {
+  const tools: HerokuAgentToolDefinition[] = [
+    {
+      type: "mcp",
+      name: "mcp-brave/brave_web_search", // MCP tool name registered on Heroku MCP Toolkit
+    },
+  ];
+
+  const agentExecutor = new HerokuMiaAgent({
+    tools: tools,
+  });
+
+  const stream = await agentExecutor.stream([
+    new HumanMessage("What is new in the world of AI?"),
+  ]);
+
+  for await (const chunk of stream) {
+    if (chunk.content) {
+      process.stdout.write(chunk.content as string);
+    }
+    // Handle tool calls and results as shown in the previous example
+  }
+}
+```
+
+## Examples
+
+Complete working examples are available in the `examples/` folder:
+
+- **`examples/heroku-mia-agent-example.ts`** - Demonstrates using Heroku tools with the agent to execute commands on Heroku apps
+- **`examples/heroku-mia-agent-example-mcp.ts`** - Shows how to use MCP tools for web search and other external services
+
+To run the examples:
+
+```bash
+# Set required environment variables
+export INFERENCE_MODEL_ID="claude-3-5-sonnet"
+export INFERENCE_KEY="your-heroku-api-key"
+export HEROKU_APP_NAME="your-app-name"  # Optional, defaults to "mia-inference-demo"
+
+# Run the Heroku tools example
+tsx examples/heroku-mia-agent-example.ts
+
+# Run the MCP tools example
+tsx examples/heroku-mia-agent-example-mcp.ts
 ```
 
 ## API Documentation
@@ -191,6 +257,38 @@ For more detailed information on the available classes, methods, and types, plea
 - `HerokuMia`: For chat completions.
 - `HerokuMiaAgent`: For agent-based interactions.
 - `types.ts`: Contains all relevant TypeScript type definitions.
+
+## Testing
+
+This project uses Node.js's native test runner with TypeScript support. The test suite covers:
+
+- Common utilities (configuration, message transformation, tool conversion)
+- Type definitions and interfaces
+- HerokuMia class functionality
+- HerokuMiaAgent class functionality
+- Integration tests
+
+### Running Tests
+
+```bash
+# Run all tests once
+pnpm test
+
+# Run tests in watch mode (re-runs on file changes)
+pnpm test:watch
+```
+
+### Test Structure
+
+The test files are organized as follows:
+
+- `test/common.test.ts` - Tests for utility functions and error handling
+- `test/types.test.ts` - Type definition validation tests
+- `test/heroku-mia.test.ts` - HerokuMia class tests
+- `test/heroku-mia-agent.test.ts` - HerokuMiaAgent class tests
+- `test/integration.test.ts` - End-to-end integration tests
+
+All tests use environment variable mocking to avoid requiring actual API keys during testing.
 
 ## Contributing
 
