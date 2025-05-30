@@ -1,6 +1,6 @@
 import { BaseChatModel, } from "@langchain/core/language_models/chat_models";
 import { AIMessage, AIMessageChunk, } from "@langchain/core/messages";
-import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, HerokuApiError, parseHerokuSSE, } from "./common";
+import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, HerokuApiError, parseHerokuSSE, } from "./common.js";
 export class HerokuMiaAgent extends BaseChatModel {
     model;
     temperature;

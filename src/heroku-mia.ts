@@ -26,14 +26,14 @@ import {
   HerokuChatCompletionResponse,
   HerokuChatCompletionStreamResponse,
   LocalToolCallChunk,
-} from "./types";
+} from "./types.js";
 import {
   getHerokuConfigOptions,
   langchainMessagesToHerokuMessages,
   langchainToolsToHerokuTools,
   HerokuApiError,
-} from "./common";
-import { parseHerokuSSE } from "./common";
+  parseHerokuSSE,
+} from "./common.js";
 
 // Types for withStructuredOutput
 interface StructuredOutputMethodOptions<IncludeRaw extends boolean = false> {

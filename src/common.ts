@@ -7,13 +7,13 @@ import {
   SystemMessage,
 } from "@langchain/core/messages";
 import { StructuredTool } from "@langchain/core/tools";
-import {
+import { convertToOpenAIFunction } from "@langchain/core/utils/function_calling";
+import type {
   HerokuChatMessage,
+  HerokuFunctionTool,
   HerokuChatMessageRole,
   HerokuToolMessageContent,
-} from "./types";
-import { convertToOpenAIFunction } from "@langchain/core/utils/function_calling";
-import { HerokuFunctionTool } from "./types";
+} from "./types.js";
 
 export const DEFAULT_INFERENCE_URL = "https://us.inference.heroku.com";
 

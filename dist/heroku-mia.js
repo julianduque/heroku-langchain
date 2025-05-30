@@ -3,8 +3,7 @@ import { AIMessage, AIMessageChunk, } from "@langchain/core/messages";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { JsonOutputKeyToolsParser } from "@langchain/core/output_parsers/openai_tools";
 import { RunnablePassthrough, RunnableSequence, } from "@langchain/core/runnables";
-import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, langchainToolsToHerokuTools, HerokuApiError, } from "./common";
-import { parseHerokuSSE } from "./common";
+import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, langchainToolsToHerokuTools, HerokuApiError, parseHerokuSSE, } from "./common.js";
 export class HerokuMia extends BaseChatModel {
     // Fields to store constructor parameters
     model;

@@ -16,13 +16,13 @@ import {
   // Import Agent SSE event types
   HerokuAgentToolErrorEvent,
   HerokuAgentAgentErrorEvent,
-} from "./types";
+} from "./types.js";
 import {
   getHerokuConfigOptions,
   langchainMessagesToHerokuMessages,
   HerokuApiError,
   parseHerokuSSE,
-} from "./common";
+} from "./common.js";
 
 export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
   protected model: string;

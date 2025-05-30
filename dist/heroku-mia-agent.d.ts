@@ -2,7 +2,7 @@ import { BaseChatModel, BaseChatModelParams } from "@langchain/core/language_mod
 import { BaseMessage, AIMessageChunk } from "@langchain/core/messages";
 import { ChatResult } from "@langchain/core/outputs";
 import { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager";
-import { HerokuMiaAgentFields, HerokuMiaAgentCallOptions } from "./types";
+import { HerokuMiaAgentFields, HerokuMiaAgentCallOptions } from "./types.js";
 export declare class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
     protected model: string;
     protected temperature?: number;

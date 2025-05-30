@@ -6,7 +6,7 @@ import { StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { Runnable } from "@langchain/core/runnables";
 import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
-import { HerokuMiaFields, HerokuMiaCallOptions } from "./types";
+import { HerokuMiaFields, HerokuMiaCallOptions } from "./types.js";
 interface StructuredOutputMethodOptions<IncludeRaw extends boolean = false> {
     name?: string;
     description?: string;

@@ -1,7 +1,6 @@
 import { BaseMessage } from "@langchain/core/messages";
 import { StructuredTool } from "@langchain/core/tools";
-import { HerokuChatMessage } from "./types";
-import { HerokuFunctionTool } from "./types";
+import type { HerokuChatMessage, HerokuFunctionTool } from "./types.js";
 export declare const DEFAULT_INFERENCE_URL = "https://us.inference.heroku.com";
 export interface HerokuConfigOptions {
     apiKey: string;

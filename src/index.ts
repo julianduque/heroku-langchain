@@ -1,9 +1,9 @@
 // Core Model Classes
-export { HerokuMia } from "./heroku-mia";
-export { HerokuMiaAgent } from "./heroku-mia-agent";
+export { HerokuMia } from "./heroku-mia.js";
+export { HerokuMiaAgent } from "./heroku-mia-agent.js";
 
 // Common Error Classes
-export { HerokuApiError } from "./common";
+export { HerokuApiError } from "./common.js";
 
 // Type Definitions for HerokuMia (Chat Completions)
 export type {
@@ -23,7 +23,7 @@ export type {
   HerokuChatCompletionStreamChoice,
   HerokuChatCompletionStreamResponse,
   LocalToolCallChunk, // If this is intended to be part of the public API for consumers handling streams
-} from "./types";
+} from "./types.js";
 
 // Type Definitions for HerokuMiaAgent (Agents)
 export type {
@@ -41,4 +41,4 @@ export type {
   HerokuAgentAgentErrorEvent,
   HerokuAgentStreamEndEvent,
   HerokuAgentSSEData, // Union type for agent SSE data
-} from "./types";
+} from "./types.js";
