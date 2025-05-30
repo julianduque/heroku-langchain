@@ -49,17 +49,18 @@ async function main() {
         process.stdout.write(chunk.content as string);
       }
 
-      // Track tool calls if present in tool_call_chunks
-      if (chunk.tool_call_chunks && chunk.tool_call_chunks.length > 0) {
-        for (const toolCallChunk of chunk.tool_call_chunks) {
-          if (toolCallChunk.name) {
-            toolCalls.push({
-              id: toolCallChunk.id,
-              name: toolCallChunk.name,
-              args: toolCallChunk.args,
-            });
-            console.log(`\n🔧 Agent is calling tool: ${toolCallChunk.name}`);
-          }
+      // Show tool calls if present in response_metadata (where Heroku puts them)
+      if (chunk.response_metadata?.tool_calls) {
+        for (const toolCall of chunk.response_metadata.tool_calls) {
+          console.log(
+            `\n🔧 Agent executed tool: ${toolCall.name} (${toolCall.id})`,
+          );
+          // Log the complete tool call metadata to see runtime_params
+          console.log(
+            "📋 Tool Call Details:",
+            JSON.stringify(toolCall, null, 2),
+          );
+          toolCalls.push(toolCall);
         }
       }
 
@@ -70,19 +71,14 @@ async function main() {
         console.log(
           `\n🛠️ Tool '${tool_name}' (${tool_call_id}) completed with result: ${tool_result}`,
         );
+      }
 
-        // Track this as a completed tool call
-        const existingCall = toolCalls.find((tc) => tc.id === tool_call_id);
-        if (!existingCall && tool_name) {
-          toolCalls.push({
-            id: tool_call_id,
-            name: tool_name,
-            args: {}, // We don't have original args from additional_kwargs
-            result: tool_result,
-          });
-        } else if (existingCall) {
-          (existingCall as any).result = tool_result;
-        }
+      // Show tool results from response_metadata as well
+      if (chunk.response_metadata?.tool_results) {
+        console.log(
+          "\n📋 Tool Results Details:",
+          JSON.stringify(chunk.response_metadata.tool_results, null, 2),
+        );
       }
     }
 
