@@ -15,7 +15,7 @@ import fs from "fs";
 const model = new HerokuMia({});
 
 function fetchWeatherAgent(city) {
-  return async (state) => {
+  return async (_state) => {
     try {
       // Mock weather data response
       const mockWeatherData = {
@@ -45,7 +45,7 @@ function fetchWeatherAgent(city) {
       const weatherPrompt = `Format this weather data in a clear, natural way: Temperature: ${json.main.temp}°F, Weather: ${json.weather[0].description}, Humidity: ${json.main.humidity}%, Wind Speed: ${json.wind.speed} mph`;
       const formattedWeather = await model.invoke([
         new SystemMessage(
-          "You are a helpful weather assistant. Format weather data in a clear, natural way."
+          "You are a helpful weather assistant. Format weather data in a clear, natural way.",
         ),
         new HumanMessage(weatherPrompt),
       ]);
@@ -67,7 +67,7 @@ async function analyzeWeatherAgent(state) {
   const dataMessage = state.messages.find(
     (msg) =>
       msg instanceof AIMessage &&
-      msg.content.toString().includes("Weather data for")
+      msg.content.toString().includes("Weather data for"),
   );
   if (!dataMessage) {
     return {
@@ -80,7 +80,7 @@ async function analyzeWeatherAgent(state) {
 
   const analysis = await model.invoke([
     new SystemMessage(
-      "You are a helpful weather advisor. Provide personalized suggestions based on weather conditions."
+      "You are a helpful weather advisor. Provide personalized suggestions based on weather conditions.",
     ),
     new HumanMessage(analysisPrompt),
   ]);
@@ -93,7 +93,7 @@ async function localEventsAgent(state) {
   const dataMessage = state.messages.find(
     (msg) =>
       msg instanceof AIMessage &&
-      msg.content.toString().includes("Weather data for")
+      msg.content.toString().includes("Weather data for"),
   );
   if (!dataMessage) {
     return {
@@ -106,7 +106,7 @@ async function localEventsAgent(state) {
 
   const events = await model.invoke([
     new SystemMessage(
-      "You are a local events coordinator. Suggest activities based on current weather conditions."
+      "You are a local events coordinator. Suggest activities based on current weather conditions.",
     ),
     new HumanMessage(eventsPrompt),
   ]);
@@ -119,7 +119,7 @@ function shouldContinue(state) {
   const dataFetcherMessage = state.messages.find(
     (msg) =>
       msg instanceof AIMessage &&
-      msg.content.toString().includes("Weather data for")
+      msg.content.toString().includes("Weather data for"),
   );
 
   // If there's no weather data or there's an error, end the workflow
@@ -177,7 +177,7 @@ runMultiAgent().then((result) => {
   const graphData = result.graph.replace("data:image/png;base64,", "");
   fs.writeFileSync(
     "weather-analysis-graph.png",
-    Buffer.from(graphData, "base64")
+    Buffer.from(graphData, "base64"),
   );
   console.log("Graph visualization saved as weather-analysis-graph.png");
 });

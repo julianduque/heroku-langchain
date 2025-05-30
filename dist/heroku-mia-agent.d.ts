@@ -10,8 +10,8 @@ export declare class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOpti
     protected stop?: string[];
     protected topP?: number;
     protected tools?: any[];
-    protected herokuApiKey?: string;
-    protected herokuApiUrl?: string;
+    protected apiKey?: string;
+    protected apiUrl?: string;
     protected maxRetries?: number;
     protected timeout?: number;
     protected streaming?: boolean;

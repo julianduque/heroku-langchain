@@ -5,19 +5,11 @@ import { HerokuAgentToolDefinition } from "../src/types"; // Assuming types are 
 async function main() {
   console.log("Running HerokuMiaAgent Example...");
 
-  const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo"; // Change this to your actual app name
+  const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
   const tools: HerokuAgentToolDefinition[] = [
     {
-      type: "heroku_tool",
-      name: "dyno_run_command",
-      runtime_params: {
-        target_app_name: appName,
-        tool_params: {
-          cmd: "date",
-          description: "Gets the current date and time on the server.",
-          parameters: { type: "object", properties: {} },
-        },
-      },
+      type: "mcp",
+      name: "mcp-brave/brave_web_search", // MCP tool name registered on Heroku MCP Toolkit
     },
   ];
 
@@ -37,9 +29,7 @@ async function main() {
     // First interaction - simple streaming
     console.log("\nStreaming HerokuMiaAgent...");
     const stream = await agentExecutor.stream([
-      new HumanMessage(
-        "What time is it on the app server? Please use the available tools to check.",
-      ),
+      new HumanMessage("What is new in the world of AI?"),
     ]);
 
     const toolCalls: any[] = [];

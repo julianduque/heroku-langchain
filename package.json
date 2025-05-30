@@ -51,7 +51,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@langchain/core": "^0.3.57"
+    "@langchain/core": "^0.3.57",
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
