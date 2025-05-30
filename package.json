@@ -1,6 +1,6 @@
 {
   "name": "heroku-langchain",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Integrate LangChainJS with Heroku's Managed Inference and Agents (Mia) services.",
   "main": "dist/index.js",
   "module": "dist/index.js",
