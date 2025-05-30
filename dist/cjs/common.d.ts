@@ -1,6 +1,6 @@
 import { BaseMessage } from "@langchain/core/messages";
 import { StructuredTool } from "@langchain/core/tools";
-import type { HerokuChatMessage, HerokuFunctionTool } from "./types.js";
+import type { HerokuChatMessage, HerokuFunctionTool } from "./types";
 export declare const DEFAULT_INFERENCE_URL = "https://us.inference.heroku.com";
 export interface HerokuConfigOptions {
     apiKey: string;
@@ -55,3 +55,4 @@ export interface ParsedSSEEvent {
  * @param onError Optional callback for errors during stream processing.
  */
 export declare function parseHerokuSSE(stream: ReadableStream<Uint8Array>, onDone?: () => void, onError?: (error: any) => void): AsyncGenerator<ParsedSSEEvent>;
+//# sourceMappingURL=common.d.ts.map

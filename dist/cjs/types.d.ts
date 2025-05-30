@@ -399,3 +399,4 @@ export interface HerokuAgentStreamEndEvent {
 /** Union type for all possible Heroku Agent SSE data payloads (after JSON parsing `data` field of ParsedSSEEvent) */
 export type HerokuAgentSSEData = HerokuAgentMessageDeltaEvent["data"] | HerokuAgentToolCallEvent["data"] | HerokuAgentToolCompletionEvent["data"] | HerokuAgentToolErrorEvent["data"] | HerokuAgentAgentErrorEvent["data"] | HerokuAgentStreamEndEvent["data"];
 export {};
+//# sourceMappingURL=types.d.ts.map

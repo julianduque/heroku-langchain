@@ -30,3 +30,4 @@ export declare class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOpti
     _generate(messages: BaseMessage[], options: this["ParsedCallOptions"], runManager?: CallbackManagerForLLMRun): Promise<ChatResult>;
     _stream(messages: BaseMessage[], options: this["ParsedCallOptions"], runManager?: CallbackManagerForLLMRun): AsyncGenerator<AIMessageChunk>;
 }
+//# sourceMappingURL=heroku-mia-agent.d.ts.map

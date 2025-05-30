@@ -63,3 +63,4 @@ export declare class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
     private isStructuredOutputMethodParams;
 }
 export {};
+//# sourceMappingURL=heroku-mia.d.ts.map
