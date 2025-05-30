@@ -27,8 +27,8 @@ Integration with Heroku's Managed Agents API (/v1/agents/heroku) for agentic int
 
 ## Future Tasks
 
-- [ ] Unit tests for `HerokuMiaAgent`.
-- [ ] Integration tests for `HerokuMiaAgent` (mocking Heroku Agent API).
+- [x] Unit tests for `HerokuMiaAgent`.
+- [x] Integration tests for `HerokuMiaAgent` (mocking Heroku Agent API).
 
 ## Implementation Plan
 

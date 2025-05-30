@@ -16,15 +16,12 @@ import {
   // Import Agent SSE event types
   HerokuAgentToolErrorEvent,
   HerokuAgentAgentErrorEvent,
-  // HerokuAgentSSEData, // Will be used for parsing stream
-  // HerokuAgentToolDefinition // If needed for request
 } from "./types";
 import {
   getHerokuConfigOptions,
   langchainMessagesToHerokuMessages,
   HerokuApiError,
   parseHerokuSSE,
-  // langchainToolsToHerokuTools, // If agent uses same tool format
 } from "./common";
 
 export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {

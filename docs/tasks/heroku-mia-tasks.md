@@ -28,8 +28,8 @@ Integration with Heroku's Managed Inference API (/v1/chat/completions) for direc
 
 ## Future Tasks
 
-- [ ] Unit tests for `HerokuMia`.
-- [ ] Integration tests for `HerokuMia` (mocking Heroku API).
+- [x] Unit tests for `HerokuMia`.
+- [x] Integration tests for `HerokuMia` (mocking Heroku API).
 
 ## Implementation Plan
 

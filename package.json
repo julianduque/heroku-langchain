@@ -21,7 +21,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx --watch src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test --import tsx test/**/*.test.ts",
+    "test:watch": "node --test --watch --import tsx test/**/*.test.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
