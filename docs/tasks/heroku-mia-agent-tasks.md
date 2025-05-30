@@ -12,14 +12,14 @@ Integration with Heroku's Managed Agents API (/v1/agents/heroku) for agentic int
 - [x] Implement `HerokuMiaAgent` class structure extending `BaseChatModel` (in `src/heroku-mia-agent.ts`).
 - [x] Implement `HerokuMiaAgent` constructor and initialize properties.
 - [x] Implement `_llmType()` method.
-- [x] Implement `invocationParams()` method (basic structure).
-- [x] Implement `_generate()` method (core logic: API call to `/invoke`, response parsing, error handling).
-- [x] Implement request formatting for Heroku Agent API (`/invoke` path - messages, metadata, session_id).
-- [x] Implement `_stream()` method (core logic: API call to `/stream`, SSE parsing for various agent events, mapping to `AIMessageChunk`, error handling).
-- [x] Implement request formatting for Heroku Agent API (`/stream` path).
-- [x] Implement SSE response parsing for `message.delta`, `tool.call`, `tool.completion`, `tool.error`, `agent.error`, `stream.end` events within `_stream()`.
-- [x] Map agent SSE events to LangChain `AIMessageChunk` (using `additional_kwargs` for non-standard data like tool results/errors).
-- [x] Handle server-side tool execution results (`tool.completion`, `tool.error`) by yielding AIMessageChunks with event data in `additional_kwargs`.
+- [x] Implement `invocationParams()` method.
+- [x] Implement `_generate()` method with proper tool call aggregation.
+- [x] Implement `_stream()` method with SSE parsing for Heroku Agent events.
+- [x] Fix event parsing to handle actual Heroku API response structure.
+- [x] Implement proper tool call tracing for LangSmith integration.
+- [x] Clean up implementation to match actual API behavior (removed unused tool_call_chunks).
+- [x] Verify tool execution results are properly captured in traces.
+- [x] Update examples to demonstrate proper usage.
 
 ## In Progress Tasks
 
@@ -32,13 +32,117 @@ Integration with Heroku's Managed Agents API (/v1/agents/heroku) for agentic int
 
 ## Implementation Plan
 
-Follow `SPECS.md` section 3. The class will extend `BaseChatModel`. Key methods are `_generate` (for `/invoke`) and `_stream` (for `/stream`). The main challenge is handling the complex SSE stream from `/v1/agents/heroku/stream` which includes various event types like `message.delta`, `tool.call`, `tool.completion`, `tool.error`, and `stream.end`. These need to be parsed and mapped to appropriate LangChain message chunks or agent actions/observations.
+The class extends `BaseChatModel` and implements both `_generate` and `_stream` methods. The key insight is that Heroku Agents API returns complete responses with both content and tool information in a single chunk, rather than streaming separate tool call chunks.
 
 ## Relevant files
 
 - `src/heroku-mia-agent.ts` - Main implementation of the `HerokuMiaAgent` class.
-- `src/types.ts` - Shared type definitions, including those for Heroku Agent API.
-- `SPECS.md` - Technical specification document.
+- `src/types.ts` - Shared type definitions for Heroku Agent API.
+- `examples/heroku-mia-agent-example.ts` - Working example with tracing support.
+
+## Latest Fix: Proper Tracing Support (✅ COMPLETED)
+
+### Problem Solved
+
+1. **"Unknown Heroku Agent event object type: undefined" errors** - Fixed by properly handling events without object types
+2. **"Error: No LLM run to end" errors** - Fixed by removing duplicate LLM end calls
+3. **Missing tool details in traces** - Fixed by properly synthesizing tool calls for LangChain tracing
+
+### Key Insights from API Analysis
+
+**Actual Heroku Agents API Response Structure:**
+
+```json
+{
+  "content": "Agent response with tool results embedded",
+  "additional_kwargs": {
+    "finish_reason": "stop",
+    "usage": {
+      "prompt_tokens": 495,
+      "completion_tokens": 31,
+      "total_tokens": 526
+    },
+    "tool_call_id": "tooluse_...",
+    "tool_name": "dyno_run_command",
+    "tool_result": "Tool 'dyno_run_command' returned result: ..."
+  },
+  "response_metadata": {
+    "finish_reason": "stop",
+    "tool_calls": [
+      {
+        "id": "tooluse_...",
+        "name": "dyno_run_command",
+        "args": {},
+        "type": "tool_call"
+      }
+    ],
+    "tool_results": {
+      "tool_call_id": "tooluse_...",
+      "tool_name": "dyno_run_command",
+      "result": "Tool 'dyno_run_command' returned result: ..."
+    }
+  }
+}
+```
+
+### Implementation Changes
+
+#### 1. Cleaned Up Event Handling
+
+- **Removed unused logic**: No `tool_call_chunks` - Heroku doesn't send these
+- **Simplified event processing**: Handle only actual event types from Heroku API
+- **Fixed undefined events**: Skip events without proper object types
+
+#### 2. Proper Tool Call Synthesis
+
+- **Use `response_metadata.tool_calls`**: Where Heroku puts structured tool call data
+- **Include tool results**: Both in `additional_kwargs` and `response_metadata`
+- **LangSmith integration**: Tool calls appear properly in traces
+
+#### 3. Enhanced Callback Manager Integration
+
+- **Tool call notifications**: Notify tracing when tools are executed
+- **Tool result notifications**: Trace tool execution results
+- **Removed duplicate end calls**: Prevent LangSmith errors
+
+#### 4. Streamlined `_generate` Method
+
+- **Use response_metadata**: Extract tool calls from where Heroku actually puts them
+- **Aggregate properly**: Collect tool information from structured metadata
+- **Include in generation info**: Ensure tools appear in LangChain traces
+
+### Current Working State
+
+✅ **Functional**: Agent executes and returns responses correctly  
+✅ **Tool Results**: Tool execution results are captured and displayed  
+✅ **LangSmith Tracing**: Tool calls and results appear properly in traces  
+✅ **Clean Implementation**: Matches actual Heroku API behavior  
+✅ **Error-free**: No more undefined event type or duplicate LLM end errors
+
+### Usage
+
+To enable LangSmith tracing:
+
+```bash
+export LANGCHAIN_TRACING_V2=true
+export LANGCHAIN_API_KEY=your_langsmith_api_key
+export LANGCHAIN_PROJECT=your_project_name
+```
+
+The implementation now correctly:
+
+- Handles the single-chunk response pattern from Heroku Agents API
+- Synthesizes proper tool call structures for LangChain compatibility
+- Provides complete tracing information to LangSmith
+- Shows clear tool execution lifecycle in console output
+
+### Example Output
+
+```
+🔧 Agent executed tool: dyno_run_command (tooluse_IrOXtRsfSeqETblyFx1cLg)
+🛠️ Tool 'dyno_run_command' (tooluse_IrOXtRsfSeqETblyFx1cLg) completed with result: Tool 'dyno_run_command' returned result: Fri May 30 17:17:17 UTC 2025
+✅ Stream ended. Tool calls executed: 1
+```
 
 ## Task: Fix HerokuMiaAgent Tool Call Traceability
 
