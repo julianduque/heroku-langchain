@@ -10,7 +10,7 @@ async function main() {
       type: "heroku_tool",
       name: "dyno_run_command",
       runtime_params: {
-        target_app_name: "heroku-mia-app",
+        target_app_name: process.env.HEROKU_APP_NAME || "app-name", // TODO: change to your app name
         tool_params: {
           cmd: "date",
           description: "Gets the current date and time on the server.",
