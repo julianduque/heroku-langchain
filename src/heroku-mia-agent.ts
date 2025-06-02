@@ -42,7 +42,7 @@ import {
  *
  * // Basic agent usage
  * const agent = new HerokuMiaAgent({
- *   model: "claude-3-5-sonnet",
+ *   model: "claude-3-7-sonnet",
  *   temperature: 0.3,
  *   tools: [
  *     {
@@ -71,7 +71,7 @@ import {
  * ```typescript
  * // Agent with MCP tools
  * const agentWithMCP = new HerokuMiaAgent({
- *   model: "claude-3-5-sonnet",
+ *   model: "claude-3-7-sonnet",
  *   tools: [
  *     {
  *       type: "mcp",
@@ -146,7 +146,7 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
    * @example
    * ```typescript
    * const agent = new HerokuMiaAgent({
-   *   model: "claude-3-5-sonnet",
+   *   model: "claude-3-7-sonnet",
    *   temperature: 0.3,
    *   maxTokensPerRequest: 2000,
    *   tools: [

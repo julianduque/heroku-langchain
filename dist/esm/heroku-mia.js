@@ -18,7 +18,7 @@ import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, langchainToo
  *
  * // Basic usage
  * const model = new HerokuMia({
- *   model: "claude-3-5-sonnet",
+ *   model: "claude-3-7-sonnet",
  *   temperature: 0.7,
  *   apiKey: process.env.INFERENCE_KEY,
  *   apiUrl: process.env.INFERENCE_URL
@@ -112,7 +112,7 @@ export class HerokuMia extends BaseChatModel {
      * @example
      * ```typescript
      * const model = new HerokuMia({
-     *   model: "claude-3-5-sonnet",
+     *   model: "claude-3-7-sonnet",
      *   temperature: 0.7,
      *   maxTokens: 1000,
      *   apiKey: "your-api-key",

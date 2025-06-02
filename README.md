@@ -1,6 +1,6 @@
 # Heroku Mia LangChain SDK
 
-This SDK provides a convenient way to interact with Heroku's AI services, specifically for chat completions and agent functionalities.
+This SDK provides a convenient way to interact with Heroku's AI services, specifically for chat completions, agent functionalities, and text embeddings.
 
 ## Installation
 
@@ -8,7 +8,17 @@ This SDK provides a convenient way to interact with Heroku's AI services, specif
 pnpm install heroku-langchain
 ```
 
+## Core Classes
+
+This SDK includes three main classes:
+
+- **`HerokuMia`**: Chat completions with support for function calling, structured outputs, and streaming
+- **`HerokuMiaAgent`**: Autonomous agents with access to Heroku tools and MCP (Model Context Protocol) tools
+- **`HerokuMiaEmbeddings`**: Text embeddings for similarity search, RAG applications, and semantic understanding
+
 ## Basic Usage
+
+### Chat Completions
 
 Here's a simple example of how to use the `HerokuMia` class for chat completions:
 
@@ -41,13 +51,62 @@ async function main() {
 main();
 ```
 
+### Text Embeddings
+
+Here's how to use the `HerokuMiaEmbeddings` class for generating text embeddings:
+
+```typescript
+import { HerokuMiaEmbeddings } from "heroku-langchain";
+
+async function main() {
+  const embeddings = new HerokuMiaEmbeddings({
+    model: "cohere-embed-multilingual",
+    // Optional: set API credentials explicitly
+    // apiKey: process.env.EMBEDDING_KEY,
+    // apiUrl: process.env.EMBEDDING_URL
+  });
+
+  try {
+    // Generate embedding for a single query
+    const queryEmbedding = await embeddings.embedQuery("What is Heroku?", {
+      input_type: "search_query",
+    });
+    console.log(`Query embedding dimensions: ${queryEmbedding.length}`);
+
+    // Generate embeddings for multiple documents
+    const documents = [
+      "Heroku is a cloud platform as a service (PaaS)",
+      "It supports multiple programming languages",
+      "Heroku makes it easy to deploy and scale applications",
+    ];
+
+    const docEmbeddings = await embeddings.embedDocuments(documents, {
+      input_type: "search_document",
+    });
+    console.log(`Generated ${docEmbeddings.length} document embeddings`);
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+
+main();
+```
+
 ## Environment Variables
 
 The SDK can utilize the following environment variables:
 
+### Chat Completions & Agents
+
 - `INFERENCE_MODEL_ID`: The ID of the inference model to use. This is required if not provided in the constructor.
 - `INFERENCE_KEY`: Your Heroku Managed Inference and Agents API key. This is required if not provided in the constructor.
 - `INFERENCE_URL`: The base URL for the Heroku Managed Inference and Agents API.
+
+### Text Embeddings
+
+- `EMBEDDING_MODEL_ID`: The ID of the embedding model to use (e.g., "cohere-embed-multilingual").
+- `EMBEDDING_KEY`: Your Heroku Embedding API key.
+- `EMBEDDING_URL`: The base URL for the Heroku Embedding API.
 
 ## Advanced Usage
 
@@ -230,32 +289,62 @@ async function mcpExample() {
 
 ## Examples
 
-Complete working examples are available in the `examples/` folder:
+Complete working examples are available in the `examples/` folder, organized by functionality:
 
-- **`examples/heroku-mia-agent-example.ts`** - Demonstrates using Heroku tools with the agent to execute commands on Heroku apps
-- **`examples/heroku-mia-agent-example-mcp.ts`** - Shows how to use MCP tools for web search and other external services
+### Chat Completions (`HerokuMia`)
+
+- **`examples/heroku-mia-chat-example.ts`** - Basic chat completion usage
+- **`examples/heroku-mia-chat-custom-tool.ts`** - Using custom tools with function calling
+- **`examples/heroku-mia-chat-structured-output.ts`** - Structured output with Zod schemas
+- **`examples/heroku-mia-chat-wikipedia-tool.ts`** - Advanced tool integration with Wikipedia search
+- **`examples/heroku-mia-chat-lcel-prompt.ts`** - Using LangChain Expression Language (LCEL) with prompts
+- **`examples/heroku-mia-runnable-sequence.ts`** - Building complex chains with LCEL
+- **`examples/heroku-mia-langraph.ts`** - Integration with LangGraph for complex workflows
+
+### Agents (`HerokuMiaAgent`)
+
+- **`examples/heroku-mia-agent-example.ts`** - Using Heroku tools with agents to execute commands on Heroku apps
+- **`examples/heroku-mia-agent-example-mcp.ts`** - Using MCP tools for web search and external services
+
+### Text Embeddings (`HerokuMiaEmbeddings`)
+
+- **`examples/heroku-mia-embeddings-example.ts`** - Complete embeddings workflow including similarity search
+
+### Running Examples
 
 To run the examples:
 
 ```bash
-# Set required environment variables
-export INFERENCE_MODEL_ID="claude-3-5-sonnet"
+# Set required environment variables for chat/agents
+export INFERENCE_MODEL_ID="claude-3-7-sonnet"
 export INFERENCE_KEY="your-heroku-api-key"
 export HEROKU_APP_NAME="your-app-name"  # Optional, defaults to "mia-inference-demo"
 
-# Run the Heroku tools example
-tsx examples/heroku-mia-agent-example.ts
+# Set required environment variables for embeddings
+export EMBEDDING_MODEL_ID="cohere-embed-multilingual"
+export EMBEDDING_KEY="your-embedding-api-key"
+export EMBEDDING_URL="your-embedding-api-url"
 
-# Run the MCP tools example
-tsx examples/heroku-mia-agent-example-mcp.ts
+# Run a chat example
+npx tsx examples/heroku-mia-chat-example.ts
+
+# Run a structured output example
+npx tsx examples/heroku-mia-chat-structured-output.ts
+
+# Run an agent example
+npx tsx examples/heroku-mia-agent-example.ts
+
+# Run the embeddings example
+npx tsx examples/heroku-mia-embeddings-example.ts
 ```
 
 ## API Documentation
 
 For more detailed information on the available classes, methods, and types, please refer to the source code and TypeDoc generated documentation (if available).
 
-- `HerokuMia`: For chat completions.
-- `HerokuMiaAgent`: For agent-based interactions.
+- `HerokuMia`: For chat completions with function calling and structured output support.
+- `HerokuMiaAgent`: For agent-based interactions with Heroku and MCP tools.
+- `HerokuMiaEmbeddings`: For generating text embeddings and semantic search.
 - `types.ts`: Contains all relevant TypeScript type definitions.
 
 ## Testing
@@ -266,6 +355,7 @@ This project uses Node.js's native test runner with TypeScript support. The test
 - Type definitions and interfaces
 - HerokuMia class functionality
 - HerokuMiaAgent class functionality
+- HerokuMiaEmbeddings class functionality
 - Integration tests
 
 ### Running Tests

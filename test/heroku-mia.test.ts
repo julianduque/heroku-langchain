@@ -38,7 +38,7 @@ describe("HerokuMia", () => {
 
     test("should create instance with provided configuration", () => {
       const herokuMia = new HerokuMia({
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.7,
         maxTokens: 1000,
         apiKey: "custom-key",
@@ -247,7 +247,7 @@ describe("HerokuMia", () => {
   describe("Model identification", () => {
     test("should use provided model", () => {
       const herokuMia = new HerokuMia({
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
       });
 
       assert.ok(herokuMia);

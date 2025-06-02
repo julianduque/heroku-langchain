@@ -19,7 +19,7 @@ import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, HerokuApiErr
  *
  * // Basic agent usage
  * const agent = new HerokuMiaAgent({
- *   model: "claude-3-5-sonnet",
+ *   model: "claude-3-7-sonnet",
  *   temperature: 0.3,
  *   tools: [
  *     {
@@ -48,7 +48,7 @@ import { getHerokuConfigOptions, langchainMessagesToHerokuMessages, HerokuApiErr
  * ```typescript
  * // Agent with MCP tools
  * const agentWithMCP = new HerokuMiaAgent({
- *   model: "claude-3-5-sonnet",
+ *   model: "claude-3-7-sonnet",
  *   tools: [
  *     {
  *       type: "mcp",
@@ -121,7 +121,7 @@ export class HerokuMiaAgent extends BaseChatModel {
      * @example
      * ```typescript
      * const agent = new HerokuMiaAgent({
-     *   model: "claude-3-5-sonnet",
+     *   model: "claude-3-7-sonnet",
      *   temperature: 0.3,
      *   maxTokensPerRequest: 2000,
      *   tools: [
