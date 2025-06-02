@@ -38,7 +38,7 @@ describe("HerokuMiaAgent", () => {
 
     test("should create instance with provided configuration", () => {
       const agent = new HerokuMiaAgent({
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.7,
         maxTokensPerRequest: 1000,
         apiKey: "custom-key",
@@ -238,7 +238,7 @@ describe("HerokuMiaAgent", () => {
 
     test("should handle streaming responses (mock)", () => {
       const _agent = new HerokuMiaAgent({
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.7,
       });
       const _messages = [new HumanMessage("Test streaming")];
@@ -249,7 +249,7 @@ describe("HerokuMiaAgent", () => {
 
     test("should handle non-streaming responses (mock)", () => {
       const _agent = new HerokuMiaAgent({
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.7,
       });
       const _messages = [new HumanMessage("Test non-streaming")];
@@ -277,7 +277,7 @@ describe("HerokuMiaAgent", () => {
   describe("Model identification", () => {
     test("should use provided model", () => {
       const agent = new HerokuMiaAgent({
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
       });
 
       assert.ok(agent);

@@ -20,7 +20,7 @@
  *
  * // Chat completion
  * const model = new HerokuMia({
- *   model: "claude-3-5-sonnet",
+ *   model: "claude-3-7-sonnet",
  *   apiKey: process.env.INFERENCE_KEY
  * });
  *

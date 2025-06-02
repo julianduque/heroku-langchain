@@ -26,7 +26,7 @@ describe("Integration tests", () => {
 
     process.env.INFERENCE_KEY = "test-inference-key";
     process.env.INFERENCE_URL = "https://test-inference.url";
-    process.env.INFERENCE_MODEL_ID = "claude-3-5-sonnet";
+    process.env.INFERENCE_MODEL_ID = "claude-3-7-sonnet";
     process.env.HEROKU_API_KEY = "test-heroku-key";
   });
 
@@ -52,12 +52,12 @@ describe("Integration tests", () => {
     test("should allow type imports", () => {
       // Type tests - these should compile without errors
       const miaFields: HerokuMiaFields = {
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.7,
       };
 
       const agentFields: HerokuMiaAgentFields = {
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.8,
       };
 
@@ -76,7 +76,7 @@ describe("Integration tests", () => {
   describe("HerokuMia workflow", () => {
     test("should create and configure HerokuMia instance", () => {
       const config: HerokuMiaFields = {
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.7,
         maxTokens: 1000,
         topP: 0.9,
@@ -165,7 +165,7 @@ describe("Integration tests", () => {
       ];
 
       const config: HerokuMiaAgentFields = {
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.8,
         maxTokensPerRequest: 2000,
         tools,
@@ -265,7 +265,7 @@ describe("Integration tests", () => {
     test("should support common configuration patterns", () => {
       // Pattern 1: Basic chat completion
       const chatConfig: HerokuMiaFields = {
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.7,
         maxTokens: 1000,
       };
@@ -274,7 +274,7 @@ describe("Integration tests", () => {
 
       // Pattern 2: Agent with Heroku tools
       const agentConfig: HerokuMiaAgentFields = {
-        model: "claude-3-5-sonnet",
+        model: "claude-3-7-sonnet",
         temperature: 0.8,
         tools: [
           {
