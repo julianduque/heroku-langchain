@@ -7,6 +7,85 @@ const zod_to_json_schema_1 = require("zod-to-json-schema");
 const openai_tools_1 = require("@langchain/core/output_parsers/openai_tools");
 const runnables_1 = require("@langchain/core/runnables");
 const common_1 = require("./common");
+/**
+ * **HerokuMia** - Heroku Managed Inference API LangChain Integration
+ *
+ * A LangChain-compatible chat model that interfaces with Heroku's Managed Inference API (Mia).
+ * This class provides access to various language models hosted on Heroku's infrastructure,
+ * including support for function calling, structured outputs, and streaming responses.
+ *
+ * @example
+ * ```typescript
+ * import { HerokuMia } from "heroku-langchain";
+ * import { HumanMessage } from "@langchain/core/messages";
+ *
+ * // Basic usage
+ * const model = new HerokuMia({
+ *   model: "claude-3-5-sonnet",
+ *   temperature: 0.7,
+ *   apiKey: process.env.INFERENCE_KEY,
+ *   apiUrl: process.env.INFERENCE_URL
+ * });
+ *
+ * const response = await model.invoke([
+ *   new HumanMessage("Explain quantum computing in simple terms")
+ * ]);
+ * console.log(response.content);
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // With function calling
+ * import { DynamicStructuredTool } from "@langchain/core/tools";
+ * import { z } from "zod";
+ *
+ * const weatherTool = new DynamicStructuredTool({
+ *   name: "get_weather",
+ *   description: "Get current weather for a location",
+ *   schema: z.object({
+ *     location: z.string().describe("City name")
+ *   }),
+ *   func: async ({ location }) => `Weather in ${location}: Sunny, 22°C`
+ * });
+ *
+ * const modelWithTools = model.bindTools([weatherTool]);
+ * const result = await modelWithTools.invoke([
+ *   new HumanMessage("What's the weather in Paris?")
+ * ]);
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // With structured output
+ * const extractionSchema = z.object({
+ *   name: z.string(),
+ *   age: z.number(),
+ *   occupation: z.string()
+ * });
+ *
+ * const structuredModel = model.withStructuredOutput(extractionSchema);
+ * const extracted = await structuredModel.invoke([
+ *   new HumanMessage("John is a 30-year-old software engineer")
+ * ]);
+ * console.log(extracted); // { name: "John", age: 30, occupation: "software engineer" }
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Streaming responses
+ * const stream = await model.stream([
+ *   new HumanMessage("Write a story about a robot")
+ * ]);
+ *
+ * for await (const chunk of stream) {
+ *   process.stdout.write(chunk.content);
+ * }
+ * ```
+ *
+ * @see {@link HerokuMiaFields} for constructor options
+ * @see {@link HerokuMiaCallOptions} for runtime call options
+ * @see [Heroku Managed Inference API Documentation](https://devcenter.heroku.com/articles/heroku-inference-api-v1-chat-completions)
+ */
 class HerokuMia extends chat_models_1.BaseChatModel {
     // Fields to store constructor parameters
     model;
@@ -20,9 +99,30 @@ class HerokuMia extends chat_models_1.BaseChatModel {
     timeout;
     streaming;
     additionalKwargs;
+    /**
+     * Returns the LangChain identifier for this model class.
+     * @returns The string "HerokuMia"
+     */
     static lc_name() {
         return "HerokuMia";
     }
+    /**
+     * Creates a new HerokuMia instance.
+     *
+     * @param fields - Configuration options for the Heroku Mia model
+     * @throws {Error} When model ID is not provided and INFERENCE_MODEL_ID environment variable is not set
+     *
+     * @example
+     * ```typescript
+     * const model = new HerokuMia({
+     *   model: "claude-3-5-sonnet",
+     *   temperature: 0.7,
+     *   maxTokens: 1000,
+     *   apiKey: "your-api-key",
+     *   apiUrl: "https://us.inference.heroku.com"
+     * });
+     * ```
+     */
     constructor(fields) {
         super(fields);
         const modelFromEnv = typeof process !== "undefined" &&
@@ -43,15 +143,52 @@ class HerokuMia extends chat_models_1.BaseChatModel {
         this.timeout = fields.timeout;
         this.streaming = fields.streaming ?? fields.stream ?? false;
         this.additionalKwargs = fields.additionalKwargs ?? {};
-        // TODO: Add API key and URL validation/defaulting from ENV vars
     }
+    /**
+     * Returns the LLM type identifier for this model.
+     * @returns The string "heroku-mia"
+     */
     _llmType() {
         return "heroku-mia";
     }
     /**
-     * Bind tools to this chat model.
-     * @param tools A list of tools to bind to the model.
-     * @returns A new instance of this chat model with the tools bound.
+     * Bind tools to this chat model for function calling capabilities.
+     *
+     * This method creates a new instance of HerokuMia with the specified tools pre-bound,
+     * enabling the model to call functions during conversations. The tools will be
+     * automatically included in all subsequent calls to the model.
+     *
+     * @param tools - A list of StructuredTool instances or tool definitions to bind to the model
+     * @returns A new HerokuMia instance with the tools bound and tool_choice set to "auto"
+     *
+     * @example
+     * ```typescript
+     * import { DynamicStructuredTool } from "@langchain/core/tools";
+     * import { z } from "zod";
+     *
+     * const calculatorTool = new DynamicStructuredTool({
+     *   name: "calculator",
+     *   description: "Perform basic arithmetic operations",
+     *   schema: z.object({
+     *     operation: z.enum(["add", "subtract", "multiply", "divide"]),
+     *     a: z.number(),
+     *     b: z.number()
+     *   }),
+     *   func: async ({ operation, a, b }) => {
+     *     switch (operation) {
+     *       case "add": return `${a + b}`;
+     *       case "subtract": return `${a - b}`;
+     *       case "multiply": return `${a * b}`;
+     *       case "divide": return `${a / b}`;
+     *     }
+     *   }
+     * });
+     *
+     * const modelWithTools = model.bindTools([calculatorTool]);
+     * const result = await modelWithTools.invoke([
+     *   new HumanMessage("What is 15 * 7?")
+     * ]);
+     * ```
      */
     bindTools(tools) {
         const herokuTools = (0, common_1.langchainToolsToHerokuTools)(tools);
@@ -85,6 +222,15 @@ class HerokuMia extends chat_models_1.BaseChatModel {
     }
     /**
      * Get the parameters used to invoke the model.
+     *
+     * This method combines constructor parameters with runtime options to create
+     * the final request parameters for the Heroku API. Runtime options take
+     * precedence over constructor parameters.
+     *
+     * @param options - Optional runtime parameters that override constructor defaults
+     * @returns Combined parameters for the API request
+     *
+     * @internal
      */
     invocationParams(options) {
         const constructorParams = {
