@@ -64,7 +64,13 @@ export default [
 
   // Exclude problematic files
   {
-    ignores: ["dist/**/*", "**/*.json", "**/*.md", "node_modules/**/*"],
+    ignores: [
+      "dist/**/*",
+      "docs/api/**/*",
+      "**/*.json",
+      "**/*.md",
+      "node_modules/**/*",
+    ],
   },
 
   // Prettier integration (must be last)

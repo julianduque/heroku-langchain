@@ -3,6 +3,7 @@ import {
   BaseChatModelParams,
 } from "@langchain/core/language_models/chat_models";
 import { StructuredTool } from "@langchain/core/tools";
+import type { RunnableConfig } from "@langchain/core/runnables";
 
 /**
  * Interface for the fields to instantiate HerokuMia.
@@ -480,3 +481,205 @@ export type HerokuAgentSSEData =
   | HerokuAgentToolErrorEvent["data"]
   | HerokuAgentAgentErrorEvent["data"]
   | HerokuAgentStreamEndEvent["data"];
+
+// --- Heroku Embeddings API Specific Types ---
+
+/**
+ * Interface for the fields to instantiate HerokuMiaEmbeddings.
+ * Extends standard embedding parameters and includes Heroku-specific configuration.
+ */
+export interface HerokuMiaEmbeddingsFields {
+  /**
+   * The model ID to use for embeddings (e.g., "cohere-embed-multilingual").
+   * As specified in Heroku embeddings API documentation.
+   * If not provided, defaults to process.env.EMBEDDING_MODEL_ID.
+   */
+  model?: string;
+
+  /**
+   * Heroku Embeddings API Key (EMBEDDING_KEY).
+   * If not provided, the library will check the environment variable EMBEDDING_KEY.
+   * Used for authentication.
+   */
+  apiKey?: string;
+
+  /**
+   * Heroku Embeddings API Base URL (EMBEDDING_URL).
+   * If not provided, checks env var EMBEDDING_URL or uses a sensible Heroku default.
+   * The endpoint path is /v1/embeddings.
+   */
+  apiUrl?: string;
+
+  /**
+   * Maximum number of retries for failed requests.
+   * Standard parameter for resilience.
+   * @default 2
+   */
+  maxRetries?: number;
+
+  /**
+   * Timeout for API requests in milliseconds.
+   * Standard parameter for request duration control.
+   */
+  timeout?: number;
+
+  /**
+   * Allows passing other Heroku-specific parameters not explicitly defined.
+   * Provides flexibility for future Heroku API additions or less common parameters.
+   * @default {}
+   */
+  additionalKwargs?: Record<string, any>;
+}
+
+/**
+ * Interface for call-time options when using HerokuMiaEmbeddings.
+ * These options can be passed to embedDocuments() and embedQuery() methods.
+ */
+export interface HerokuMiaEmbeddingsCallOptions extends RunnableConfig {
+  /**
+   * Type of input text for embedding optimization.
+   * - "search_document": For storing documents in a search index
+   * - "search_query": For searching with a query
+   * - "classification": For classification tasks
+   * - "clustering": For clustering tasks
+   */
+  input_type?:
+    | "search_document"
+    | "search_query"
+    | "classification"
+    | "clustering";
+
+  /**
+   * Override the default model for this specific call.
+   */
+  model?: string;
+
+  /**
+   * Format for the embeddings encoding.
+   */
+  encoding_format?: "raw" | "base64";
+
+  /**
+   * Type of embedding to generate.
+   */
+  embedding_type?: "float" | "int8" | "uint8" | "binary" | "ubinary";
+
+  /**
+   * How to handle inputs longer than the maximum length.
+   */
+  truncate?: "NONE" | "START" | "END";
+
+  /**
+   * Additional options to pass to the Heroku embeddings API.
+   */
+  additionalKwargs?: Record<string, any>;
+}
+
+/**
+ * Request payload for Heroku /v1/embeddings API.
+ * Based on Heroku embeddings API documentation.
+ */
+export interface HerokuEmbeddingsRequest {
+  /**
+   * Model ID to use for embeddings.
+   */
+  model: string;
+
+  /**
+   * Array of strings to embed.
+   * Maximum 96 strings, each with maximum 2048 characters.
+   */
+  input: string[];
+
+  /**
+   * Type of the input text.
+   */
+  input_type?:
+    | "search_document"
+    | "search_query"
+    | "classification"
+    | "clustering";
+
+  /**
+   * Format for the embeddings encoding.
+   * @default "raw"
+   */
+  encoding_format?: "raw" | "base64";
+
+  /**
+   * Type of embedding to generate.
+   * @default "float"
+   */
+  embedding_type?: "float" | "int8" | "uint8" | "binary" | "ubinary";
+
+  /**
+   * How to handle inputs longer than the maximum length.
+   * @default "END"
+   */
+  truncate?: "NONE" | "START" | "END";
+
+  /**
+   * Additional parameters for future compatibility.
+   */
+  [key: string]: any;
+}
+
+/**
+ * Individual embedding object in the response.
+ */
+export interface HerokuEmbeddingObject {
+  /**
+   * The embedding vector as an array of floats.
+   */
+  embedding: number[];
+
+  /**
+   * Index of this embedding in the input array.
+   */
+  index: number;
+
+  /**
+   * Type of object (typically "embedding").
+   */
+  object: string;
+}
+
+/**
+ * Usage statistics for embeddings request.
+ */
+export interface HerokuEmbeddingsUsage {
+  /**
+   * Number of tokens in the input.
+   */
+  prompt_tokens: number;
+
+  /**
+   * Total number of tokens processed.
+   */
+  total_tokens: number;
+}
+
+/**
+ * Response from Heroku /v1/embeddings API.
+ */
+export interface HerokuEmbeddingsResponse {
+  /**
+   * Array of embedding objects.
+   */
+  data: HerokuEmbeddingObject[];
+
+  /**
+   * Model used for generating embeddings.
+   */
+  model: string;
+
+  /**
+   * Type of object (typically "list").
+   */
+  object: string;
+
+  /**
+   * Usage statistics.
+   */
+  usage: HerokuEmbeddingsUsage;
+}
