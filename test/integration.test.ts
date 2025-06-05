@@ -84,7 +84,7 @@ describe("Integration tests", () => {
 
       const herokuMia = new HerokuMia(config);
       assert.ok(herokuMia);
-      assert.strictEqual(herokuMia._llmType(), "heroku-mia");
+      assert.strictEqual(herokuMia._llmType(), "HerokuMia");
     });
 
     test("should handle message preparation", () => {

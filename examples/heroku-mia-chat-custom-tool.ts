@@ -9,7 +9,7 @@ async function getCurrentWeather(
   unit: "celsius" | "fahrenheit" = "celsius",
 ) {
   console.log(
-    `[Tool Call] getCurrentWeather called with location: ${location}, unit: ${unit}`,
+    `🌡️ [Tool Call] getCurrentWeather called with location: ${location}, unit: ${unit}`,
   );
   if (location.toLowerCase().includes("tokyo")) {
     return JSON.stringify({
@@ -47,7 +47,7 @@ const weatherTool = new DynamicTool({
       // Fallback if input is not JSON, treat it as location string
       location = input as string;
       console.warn(
-        `Tool input was not valid JSON, treating as location string: ${input}`,
+        `⚠️ Tool input was not valid JSON, treating as location string: ${input}`,
       );
     }
     if (!location)
@@ -59,7 +59,7 @@ const weatherTool = new DynamicTool({
 });
 
 async function main() {
-  console.log("Running HerokuMia Chat with Custom Tool Example...");
+  console.log("🛠️ Running HerokuMia Chat with Custom Tool Example...");
 
   const llm = new HerokuMia({
     // model: "claude-3-opus-20240229", // Choose a model good at tool use
@@ -79,24 +79,24 @@ async function main() {
     ) => {
       const messages = [...input.messages];
 
-      console.log("\nInitial LLM call with tool...");
+      console.log("\n🤖 Initial LLM call with tool...");
       let aiResponse = await llmWithTools.invoke(messages, config);
 
       messages.push(aiResponse as AIMessage);
-      console.log("LLM Response 1:", aiResponse.content);
-      console.log("Tool Calls:", aiResponse.tool_calls);
+      console.log("✅ LLM Response 1:", aiResponse.content);
+      console.log("🔧 Tool Calls:", aiResponse.tool_calls);
 
       // Handle tool calls within the same runnable context
       if (aiResponse.tool_calls && aiResponse.tool_calls.length > 0) {
         for (const toolCall of aiResponse.tool_calls) {
-          console.log(`\nExecuting tool: ${toolCall.name}`);
+          console.log(`\n⚡ Executing tool: ${toolCall.name}`);
 
           // Find and execute the tool
           const toolToCall = tools.find((t) => t.name === toolCall.name);
           if (toolToCall) {
             const toolOutput = await toolToCall.invoke(toolCall.args, config);
             console.log(
-              `Tool output for ${toolCall.name} (id: ${toolCall.id}):`,
+              `✅ Tool output for ${toolCall.name} (id: ${toolCall.id}):`,
               toolOutput,
             );
 
@@ -110,12 +110,12 @@ async function main() {
           }
         }
 
-        console.log("\nLLM call after tool execution...");
+        console.log("\n🔄 LLM call after tool execution...");
         // Continue conversation with tool results
         aiResponse = await llmWithTools.invoke(messages, config);
         messages.push(aiResponse as AIMessage);
         console.log(
-          "LLM Response 2 (after tool execution):",
+          "🎯 LLM Response 2 (after tool execution):",
           aiResponse.content,
         );
       }
@@ -134,10 +134,10 @@ async function main() {
   try {
     // Execute the entire tool calling sequence within a single trace
     const result = await toolCallingAgent.invoke({ messages: initialMessages });
-    console.log("\n--- Final Result ---");
+    console.log("\n🎯 --- Final Result ---");
     console.log("Final Response:", result.finalResponse);
   } catch (error) {
-    console.error("Error during custom tool example:", error);
+    console.error("❌ Error during custom tool example:", error);
   }
 }
 

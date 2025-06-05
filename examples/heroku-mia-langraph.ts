@@ -167,9 +167,9 @@ export async function runMultiAgent(city = "New York") {
 }
 
 runMultiAgent().then((result) => {
-  console.log("Weather Analysis Results:");
+  console.log("🕸️ Weather Analysis Results:");
   result.messages.forEach((msg, index) => {
-    console.log(`Message ${index + 1}: ${msg.content}`);
+    console.log(`📝 Message ${index + 1}: ${msg.content}`);
   });
 
   // Save the graph visualization as a PNG file
@@ -179,5 +179,5 @@ runMultiAgent().then((result) => {
     "weather-analysis-graph.png",
     Buffer.from(graphData, "base64"),
   );
-  console.log("Graph visualization saved as weather-analysis-graph.png");
+  console.log("✅ Graph visualization saved as weather-analysis-graph.png");
 });

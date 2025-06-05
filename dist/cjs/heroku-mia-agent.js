@@ -118,11 +118,15 @@ class HerokuMiaAgent extends chat_models_1.BaseChatModel {
     /**
      * Creates a new HerokuMiaAgent instance.
      *
-     * @param fields - Configuration options for the Heroku Mia Agent
+     * @param fields - Optional configuration options for the Heroku Mia Agent
      * @throws {Error} When model ID is not provided and INFERENCE_MODEL_ID environment variable is not set
      *
      * @example
      * ```typescript
+     * // Basic usage with defaults
+     * const agent = new HerokuMiaAgent();
+     *
+     * // With custom configuration
      * const agent = new HerokuMiaAgent({
      *   model: "claude-3-7-sonnet",
      *   temperature: 0.3,
@@ -148,29 +152,29 @@ class HerokuMiaAgent extends chat_models_1.BaseChatModel {
      * ```
      */
     constructor(fields) {
-        super(fields);
+        super(fields ?? {});
         const modelFromEnv = typeof process !== "undefined" &&
             process.env &&
             process.env.INFERENCE_MODEL_ID;
-        this.model = fields.model || modelFromEnv || "";
+        this.model = fields?.model || modelFromEnv || "";
         if (!this.model) {
             throw new Error("Heroku model ID not found. Please set it in the constructor, " +
                 "or set the INFERENCE_MODEL_ID environment variable.");
         }
-        this.temperature = fields.temperature ?? 1.0;
-        this.maxTokensPerRequest = fields.maxTokensPerRequest;
-        this.stop = fields.stop;
-        this.topP = fields.topP ?? 0.999;
-        this.tools = fields.tools; // Assuming tools are passed in constructor
-        this.apiKey = fields.apiKey;
-        this.apiUrl = fields.apiUrl;
-        this.maxRetries = fields.maxRetries ?? 2;
-        this.timeout = fields.timeout;
+        this.temperature = fields?.temperature ?? 1.0;
+        this.maxTokensPerRequest = fields?.maxTokensPerRequest;
+        this.stop = fields?.stop;
+        this.topP = fields?.topP ?? 0.999;
+        this.tools = fields?.tools; // Assuming tools are passed in constructor
+        this.apiKey = fields?.apiKey;
+        this.apiUrl = fields?.apiUrl;
+        this.maxRetries = fields?.maxRetries ?? 2;
+        this.timeout = fields?.timeout;
         // Agent API is always streaming, so set this to true.
         this.streaming = true;
         // Set streamUsage to false so stream() calls _stream() directly to preserve heroku_agent_event
         this.streamUsage = false;
-        this.additionalKwargs = fields.additionalKwargs ?? {};
+        this.additionalKwargs = fields?.additionalKwargs ?? {};
     }
     /**
      * Returns the LLM type identifier for this agent.

@@ -67,6 +67,8 @@
     "@eslint/js": "^9.28.0",
     "@langchain/community": "^0.3.45",
     "@langchain/langgraph": "^0.2.74",
+    "@langchain/mcp-adapters": "^0.5.2",
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@types/node": "^22.15.29",
     "eslint": "^9.28.0",
     "eslint-config-prettier": "^10.1.5",

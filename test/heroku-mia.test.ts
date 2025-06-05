@@ -64,12 +64,65 @@ describe("HerokuMia", () => {
 
       assert.ok(herokuMia);
     });
+
+    // New tests for optional constructor
+    test("should create instance without any parameters when environment variables are set", () => {
+      const herokuMia = new HerokuMia();
+
+      assert.ok(herokuMia);
+      assert.strictEqual(herokuMia._llmType(), "HerokuMia");
+    });
+
+    test("should throw error when no parameters and no environment variables", () => {
+      // Backup current env vars
+      const backupModelId = process.env.INFERENCE_MODEL_ID;
+
+      try {
+        delete process.env.INFERENCE_MODEL_ID;
+
+        assert.throws(() => new HerokuMia(), /Heroku model ID not found/);
+      } finally {
+        // Restore env vars
+        if (backupModelId) {
+          process.env.INFERENCE_MODEL_ID = backupModelId;
+        }
+      }
+    });
+
+    test("should prioritize constructor parameters over environment variables", () => {
+      const customModel = "custom-claude-model";
+      const herokuMia = new HerokuMia({ model: customModel });
+
+      // We can't directly access the model property, but we can check that it doesn't throw
+      assert.ok(herokuMia);
+      // The invocation params should contain our custom model
+      const params = herokuMia.invocationParams();
+      assert.strictEqual(params.model, customModel);
+    });
+
+    test("should use environment variables when constructor parameters are undefined", () => {
+      const envModel = process.env.INFERENCE_MODEL_ID;
+      const herokuMia = new HerokuMia();
+
+      const params = herokuMia.invocationParams();
+      assert.strictEqual(params.model, envModel);
+    });
+
+    test("should handle mixed parameter sources correctly", () => {
+      const customTemperature = 0.5;
+      const herokuMia = new HerokuMia({ temperature: customTemperature });
+
+      const params = herokuMia.invocationParams();
+      // Should use environment model but custom temperature
+      assert.strictEqual(params.model, process.env.INFERENCE_MODEL_ID);
+      assert.strictEqual(params.temperature, customTemperature);
+    });
   });
 
   describe("Model properties", () => {
     test("should have correct _llmType", () => {
       const herokuMia = new HerokuMia({});
-      assert.strictEqual(herokuMia._llmType(), "heroku-mia");
+      assert.strictEqual(herokuMia._llmType(), "HerokuMia");
     });
 
     test("should have invocation params method", () => {

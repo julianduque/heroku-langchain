@@ -3,7 +3,7 @@ import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgentToolDefinition } from "../src/types"; // Assuming types are exported from ../src/types
 
 async function main() {
-  console.log("Running HerokuMiaAgent Example...");
+  console.log("🤖 Running HerokuMiaAgent MCP Example...");
 
   const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
   const tools: HerokuAgentToolDefinition[] = [
@@ -24,10 +24,10 @@ async function main() {
   });
 
   try {
-    console.log("\n=== Heroku Tool Execution ===");
+    console.log("\n🔧 === Heroku MCP Tool Execution ===");
 
     // First interaction - simple streaming
-    console.log("\nStreaming HerokuMiaAgent...");
+    console.log("\n🔄 Streaming HerokuMiaAgent...");
     const stream = await agentExecutor.stream([
       new HumanMessage("What is new in the world of AI?"),
     ]);
@@ -43,7 +43,7 @@ async function main() {
       if (chunk.response_metadata?.tool_calls) {
         for (const toolCall of chunk.response_metadata.tool_calls) {
           console.log(
-            `\n🔧 Agent executed tool: ${toolCall.name} (${toolCall.id})`,
+            `\n⚡ Agent executed tool: ${toolCall.name} (${toolCall.id})`,
           );
           // Log the complete tool call metadata to see runtime_params
           console.log(
@@ -59,7 +59,7 @@ async function main() {
         const { tool_name, tool_result, tool_call_id } =
           chunk.additional_kwargs;
         console.log(
-          `\n🛠️ Tool '${tool_name}' (${tool_call_id}) completed with result: ${tool_result}`,
+          `\n✅ Tool '${tool_name}' (${tool_call_id}) completed with result: ${tool_result}`,
         );
       }
 
@@ -74,7 +74,7 @@ async function main() {
 
     console.log(`\n✅ Stream ended. Tool calls executed: ${toolCalls.length}`);
   } catch (error) {
-    console.error("Error:", error);
+    console.error("❌ Error:", error);
   }
 }
 

@@ -25,14 +25,14 @@ class WikipediaSearchTool extends StructuredTool {
 
   async _call(arg: { query: string }, runManager?, parentConfig?) {
     console.log(
-      `[WikipediaSearchTool] Searching Wikipedia for: "${arg.query}"`,
+      `🔍 [WikipediaSearchTool] Searching Wikipedia for: "${arg.query}"`,
     );
     try {
       // Pass the config to maintain trace context
       return await this.wikipediaTool.invoke(arg.query, parentConfig);
     } catch (e: any) {
       console.error(
-        `[WikipediaSearchTool] Error searching Wikipedia: ${e.message}`,
+        `❌ [WikipediaSearchTool] Error searching Wikipedia: ${e.message}`,
       );
       return `Error searching Wikipedia for "${arg.query}": ${e.message}`;
     }
@@ -41,7 +41,7 @@ class WikipediaSearchTool extends StructuredTool {
 
 async function main() {
   console.log(
-    "Running HerokuMia Chat with official WikipediaQueryRun Tool Example...",
+    "🔧 Running HerokuMia Chat with official WikipediaQueryRun Tool Example...",
   );
 
   // Create the custom Wikipedia tool
@@ -64,29 +64,29 @@ async function main() {
     ) => {
       const chatHistory = [...input.messages];
 
-      console.log(`Initial Human Message: "${chatHistory[0].content}"`);
+      console.log(`💭 Initial Human Message: "${chatHistory[0].content}"`);
 
       // 4. Initial call to HerokuMia with bound tools
       let response = await llmWithTools.invoke(chatHistory, config);
-      console.log("\n--- First LLM Response ---");
+      console.log("\n🤖 --- First LLM Response ---");
       console.log("Content:", response.content);
       console.log("Tool Calls:", response.tool_calls);
       chatHistory.push(response);
 
       // 5. Handle potential tool_calls within the same runnable context
       if (response.tool_calls && response.tool_calls.length > 0) {
-        console.log("\n--- Handling Tool Calls ---");
+        console.log("\n⚡ --- Handling Tool Calls ---");
         for (const toolCall of response.tool_calls) {
           const toolToCall = tools.find((t) => t.name === toolCall.name);
           if (toolToCall) {
             console.log(
-              `Executing tool: ${toolCall.name} with args:`,
+              `🔧 Executing tool: ${toolCall.name} with args:`,
               toolCall.args,
             );
             try {
               // Execute tool within the same tracing context
               const toolOutput = await toolToCall.invoke(toolCall.args, config);
-              console.log(`Tool Output (${toolCall.name}): "${toolOutput}"`);
+              console.log(`✅ Tool Output (${toolCall.name}): "${toolOutput}"`);
               chatHistory.push(
                 new ToolMessage({
                   content: toolOutput,
@@ -95,7 +95,7 @@ async function main() {
               );
             } catch (e: any) {
               console.error(
-                `Error during toolToCall.invoke for ${toolCall.name}:`,
+                `❌ Error during toolToCall.invoke for ${toolCall.name}:`,
                 e.message,
               );
               chatHistory.push(
@@ -106,7 +106,7 @@ async function main() {
               );
             }
           } else {
-            console.warn(`Tool ${toolCall.name} not found.`);
+            console.warn(`⚠️ Tool ${toolCall.name} not found.`);
             chatHistory.push(
               new ToolMessage({
                 content: `Error: Tool ${toolCall.name} not found.`,
@@ -117,13 +117,15 @@ async function main() {
         }
 
         // 6. Call LLM again with the tool's output
-        console.log("\n--- Second LLM Call (with tool results) ---");
+        console.log("\n🔄 --- Second LLM Call (with tool results) ---");
         response = await llmWithTools.invoke(chatHistory, config);
-        console.log("\n--- Final LLM Response ---");
+        console.log("\n🎯 --- Final LLM Response ---");
         console.log("Content:", response.content);
         chatHistory.push(response);
       } else {
-        console.log("\nNo tool calls made by the LLM in the first response.");
+        console.log(
+          "\n✅ No tool calls made by the LLM in the first response.",
+        );
       }
 
       return {
@@ -141,16 +143,16 @@ async function main() {
     // Execute the entire tool calling sequence within a single trace
     const result = await toolCallingAgent.invoke({ messages: initialMessages });
 
-    console.log("\n--- Final Chat History ---");
+    console.log("\n📋 --- Final Chat History ---");
     result.chatHistory.forEach((msg) =>
       console.log(JSON.stringify(msg.toJSON(), null, 2)),
     ); // Log full message structure with pretty formatting
 
-    console.log("\n--- Final Result ---");
+    console.log("\n🎯 --- Final Result ---");
     console.log("Final Response:", result.finalResponse);
   } catch (error) {
     console.error(
-      "\nError during HerokuMia chat with WikipediaTool execution:",
+      "\n❌ Error during HerokuMia chat with WikipediaTool execution:",
       error,
     );
   }

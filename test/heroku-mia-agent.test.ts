@@ -82,6 +82,72 @@ describe("HerokuMiaAgent", () => {
 
       assert.ok(agent);
     });
+
+    // New tests for optional constructor
+    test("should create instance without any parameters when environment variables are set", () => {
+      const agent = new HerokuMiaAgent();
+
+      assert.ok(agent);
+      assert.strictEqual(agent._llmType(), "HerokuMiaAgent");
+    });
+
+    test("should throw error when no parameters and no environment variables", () => {
+      // Backup current env vars
+      const backupModelId = process.env.INFERENCE_MODEL_ID;
+
+      try {
+        delete process.env.INFERENCE_MODEL_ID;
+
+        assert.throws(() => new HerokuMiaAgent(), /Heroku model ID not found/);
+      } finally {
+        // Restore env vars
+        if (backupModelId) {
+          process.env.INFERENCE_MODEL_ID = backupModelId;
+        }
+      }
+    });
+
+    test("should prioritize constructor parameters over environment variables", () => {
+      const customModel = "custom-claude-agent";
+      const agent = new HerokuMiaAgent({ model: customModel });
+
+      assert.ok(agent);
+      // The invocation params should contain our custom model
+      const params = agent.invocationParams();
+      assert.strictEqual(params.model, customModel);
+    });
+
+    test("should use environment variables when constructor parameters are undefined", () => {
+      const envModel = process.env.INFERENCE_MODEL_ID;
+      const agent = new HerokuMiaAgent();
+
+      const params = agent.invocationParams();
+      assert.strictEqual(params.model, envModel);
+    });
+
+    test("should handle mixed parameter sources correctly", () => {
+      const customTemperature = 0.3;
+      const customTools: HerokuAgentToolDefinition[] = [
+        {
+          type: "heroku_tool",
+          name: "test_tool",
+          runtime_params: {
+            target_app_name: "test-app",
+          },
+        },
+      ];
+
+      const agent = new HerokuMiaAgent({
+        temperature: customTemperature,
+        tools: customTools,
+      });
+
+      const params = agent.invocationParams();
+      // Should use environment model but custom temperature and tools
+      assert.strictEqual(params.model, process.env.INFERENCE_MODEL_ID);
+      assert.strictEqual(params.temperature, customTemperature);
+      assert.deepStrictEqual(params.tools, customTools);
+    });
   });
 
   describe("Model properties", () => {

@@ -109,11 +109,15 @@ class HerokuMia extends chat_models_1.BaseChatModel {
     /**
      * Creates a new HerokuMia instance.
      *
-     * @param fields - Configuration options for the Heroku Mia model
+     * @param fields - Optional configuration options for the Heroku Mia model
      * @throws {Error} When model ID is not provided and INFERENCE_MODEL_ID environment variable is not set
      *
      * @example
      * ```typescript
+     * // Basic usage with defaults
+     * const model = new HerokuMia();
+     *
+     * // With custom configuration
      * const model = new HerokuMia({
      *   model: "claude-3-7-sonnet",
      *   temperature: 0.7,
@@ -124,32 +128,32 @@ class HerokuMia extends chat_models_1.BaseChatModel {
      * ```
      */
     constructor(fields) {
-        super(fields);
+        super(fields ?? {});
         const modelFromEnv = typeof process !== "undefined" &&
             process.env &&
             process.env.INFERENCE_MODEL_ID;
-        this.model = fields.model || modelFromEnv || ""; // Keep default as empty string to handle error below
+        this.model = fields?.model || modelFromEnv || "";
         if (!this.model) {
             throw new Error("Heroku model ID not found. Please set it in the constructor, " +
                 "or set the INFERENCE_MODEL_ID environment variable.");
         }
-        this.temperature = fields.temperature ?? 1.0;
-        this.maxTokens = fields.maxTokens;
-        this.stop = fields.stop;
-        this.topP = fields.topP ?? 0.999;
-        this.apiKey = fields.apiKey;
-        this.apiUrl = fields.apiUrl;
-        this.maxRetries = fields.maxRetries ?? 2;
-        this.timeout = fields.timeout;
-        this.streaming = fields.streaming ?? fields.stream ?? false;
-        this.additionalKwargs = fields.additionalKwargs ?? {};
+        this.temperature = fields?.temperature ?? 1.0;
+        this.maxTokens = fields?.maxTokens;
+        this.stop = fields?.stop;
+        this.topP = fields?.topP ?? 0.999;
+        this.apiKey = fields?.apiKey;
+        this.apiUrl = fields?.apiUrl;
+        this.maxRetries = fields?.maxRetries ?? 2;
+        this.timeout = fields?.timeout;
+        this.streaming = fields?.streaming ?? fields?.stream ?? false;
+        this.additionalKwargs = fields?.additionalKwargs ?? {};
     }
     /**
      * Returns the LLM type identifier for this model.
-     * @returns The string "heroku-mia"
+     * @returns The string "HerokuMia"
      */
     _llmType() {
-        return "heroku-mia";
+        return "HerokuMia";
     }
     /**
      * Bind tools to this chat model for function calling capabilities.

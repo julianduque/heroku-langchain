@@ -143,11 +143,15 @@ export declare class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
     /**
      * Creates a new HerokuMia instance.
      *
-     * @param fields - Configuration options for the Heroku Mia model
+     * @param fields - Optional configuration options for the Heroku Mia model
      * @throws {Error} When model ID is not provided and INFERENCE_MODEL_ID environment variable is not set
      *
      * @example
      * ```typescript
+     * // Basic usage with defaults
+     * const model = new HerokuMia();
+     *
+     * // With custom configuration
      * const model = new HerokuMia({
      *   model: "claude-3-7-sonnet",
      *   temperature: 0.7,
@@ -157,10 +161,10 @@ export declare class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
      * });
      * ```
      */
-    constructor(fields: HerokuMiaFields);
+    constructor(fields?: HerokuMiaFields);
     /**
      * Returns the LLM type identifier for this model.
-     * @returns The string "heroku-mia"
+     * @returns The string "HerokuMia"
      */
     _llmType(): string;
     /**

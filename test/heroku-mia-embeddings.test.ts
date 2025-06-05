@@ -1,8 +1,31 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import { HerokuMiaEmbeddings } from "../src/heroku-mia-embeddings.js";
 
 describe("HerokuMiaEmbeddings", () => {
+  let originalEnv: Record<string, string | undefined>;
+
+  beforeEach(() => {
+    // Backup environment variables
+    originalEnv = {
+      EMBEDDING_MODEL_ID: process.env.EMBEDDING_MODEL_ID,
+      EMBEDDING_KEY: process.env.EMBEDDING_KEY,
+      EMBEDDING_URL: process.env.EMBEDDING_URL,
+    };
+
+    // Set test environment variables
+    process.env.EMBEDDING_MODEL_ID = "test-embed-model";
+    process.env.EMBEDDING_KEY = "test-embed-key";
+    process.env.EMBEDDING_URL = "https://test-embed.url";
+  });
+
+  afterEach(() => {
+    // Restore original environment variables
+    process.env.EMBEDDING_MODEL_ID = originalEnv.EMBEDDING_MODEL_ID;
+    process.env.EMBEDDING_KEY = originalEnv.EMBEDDING_KEY;
+    process.env.EMBEDDING_URL = originalEnv.EMBEDDING_URL;
+  });
+
   it("should throw error when no model is provided", () => {
     assert.throws(() => {
       // Clear the environment variable temporarily
@@ -72,5 +95,82 @@ describe("HerokuMiaEmbeddings", () => {
       model: "cohere-embed-multilingual",
     });
     assert.strictEqual(embeddings.lc_serializable, true);
+  });
+
+  // New tests for optional constructor
+  describe("Optional Constructor", () => {
+    it("should create instance without any parameters when environment variables are set", () => {
+      const embeddings = new HerokuMiaEmbeddings();
+
+      assert.ok(embeddings);
+      assert.strictEqual(embeddings.lc_name, "HerokuMiaEmbeddings");
+    });
+
+    it("should throw error when no parameters and no environment variables", () => {
+      // Backup current env vars
+      const backupModelId = process.env.EMBEDDING_MODEL_ID;
+
+      try {
+        delete process.env.EMBEDDING_MODEL_ID;
+
+        assert.throws(
+          () => new HerokuMiaEmbeddings(),
+          /Heroku embeddings model ID not found/,
+        );
+      } finally {
+        // Restore env vars
+        if (backupModelId) {
+          process.env.EMBEDDING_MODEL_ID = backupModelId;
+        }
+      }
+    });
+
+    it("should prioritize constructor parameters over environment variables", () => {
+      const customModel = "custom-embed-model";
+      const embeddings = new HerokuMiaEmbeddings({ model: customModel });
+
+      assert.ok(embeddings);
+      // We can verify the model is used by checking the invocation params
+      const params = (embeddings as any).invocationParams();
+      assert.strictEqual(params.model, customModel);
+    });
+
+    it("should use environment variables when constructor parameters are undefined", () => {
+      const envModel = process.env.EMBEDDING_MODEL_ID;
+      const embeddings = new HerokuMiaEmbeddings();
+
+      const params = (embeddings as any).invocationParams();
+      assert.strictEqual(params.model, envModel);
+    });
+
+    it("should handle mixed parameter sources correctly", () => {
+      const customMaxRetries = 5;
+      const customAdditionalKwargs = { encoding_format: "base64" };
+
+      const embeddings = new HerokuMiaEmbeddings({
+        maxRetries: customMaxRetries,
+        additionalKwargs: customAdditionalKwargs,
+      });
+
+      assert.ok(embeddings);
+      const params = (embeddings as any).invocationParams();
+      // Should use environment model but custom parameters
+      assert.strictEqual(params.model, process.env.EMBEDDING_MODEL_ID);
+      assert.strictEqual(params.encoding_format, "base64");
+    });
+
+    it("should support all constructor parameters being optional", () => {
+      // Test that all parameter combinations work
+      assert.doesNotThrow(() => {
+        new HerokuMiaEmbeddings();
+        new HerokuMiaEmbeddings({});
+        new HerokuMiaEmbeddings({ model: "custom-model" });
+        new HerokuMiaEmbeddings({ maxRetries: 3 });
+        new HerokuMiaEmbeddings({ timeout: 10000 });
+        new HerokuMiaEmbeddings({
+          additionalKwargs: { input_type: "search_query" },
+        });
+      });
+    });
   });
 });

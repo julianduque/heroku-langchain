@@ -188,6 +188,57 @@ describe("Common utilities", () => {
       });
     });
 
+    test("should convert ToolMessage with structured data", () => {
+      const structuredData = [
+        {
+          id: 11,
+          repo_url: "https://github.com/heroku-reference-apps/heroku-jupyter",
+          owner: "heroku-reference-apps",
+          repo: "heroku-jupyter",
+        },
+        {
+          id: 13,
+          repo_url: "https://github.com/heroku-reference-apps/heroku-streamlit",
+          owner: "heroku-reference-apps",
+          repo: "heroku-streamlit",
+        },
+      ];
+
+      const toolMessage = new ToolMessage({
+        content: JSON.stringify(structuredData),
+        tool_call_id: "call_456",
+      });
+      const result = langchainMessagesToHerokuMessages([toolMessage]);
+
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0], {
+        role: "tool",
+        content: JSON.stringify({ result: structuredData }), // Arrays now wrapped in { result: ... }
+        tool_call_id: "call_456",
+      });
+    });
+
+    test("should convert ToolMessage with non-string content by stringifying", () => {
+      const objectData = {
+        status: "success",
+        results: [1, 2, 3],
+      };
+
+      // Simulate a ToolMessage where content is not already a string
+      const toolMessage = new ToolMessage({
+        content: objectData as any, // Force non-string content
+        tool_call_id: "call_789",
+      });
+      const result = langchainMessagesToHerokuMessages([toolMessage]);
+
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0], {
+        role: "tool",
+        content: JSON.stringify(objectData),
+        tool_call_id: "call_789",
+      });
+    });
+
     test("should convert FunctionMessage", () => {
       const funcMessage = new FunctionMessage({
         content: "Function executed successfully",
@@ -200,6 +251,60 @@ describe("Common utilities", () => {
         role: "tool",
         content: "Function executed successfully",
         name: "my_function",
+      });
+    });
+
+    test("should convert FunctionMessage with non-string content by stringifying", () => {
+      const arrayData = ["item1", "item2", "item3"];
+
+      // Simulate a FunctionMessage where content is not already a string
+      const funcMessage = new FunctionMessage({
+        content: arrayData as any, // Force non-string content
+        name: "my_array_function",
+      });
+      const result = langchainMessagesToHerokuMessages([funcMessage]);
+
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0], {
+        role: "tool",
+        content: JSON.stringify({ result: arrayData }), // Arrays now wrapped in { result: ... }
+        name: "my_array_function",
+      });
+    });
+
+    test("should keep plain text tool content as string", () => {
+      const toolMessage = new ToolMessage({
+        content: "Simple text result that is not JSON",
+        tool_call_id: "call_text",
+      });
+      const result = langchainMessagesToHerokuMessages([toolMessage]);
+
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0], {
+        role: "tool",
+        content: "Simple text result that is not JSON", // Should remain as string
+        tool_call_id: "call_text",
+      });
+    });
+
+    test("should not wrap JSON objects (only arrays)", () => {
+      const objectData = {
+        status: "success",
+        count: 5,
+        items: ["a", "b", "c"],
+      };
+
+      const toolMessage = new ToolMessage({
+        content: JSON.stringify(objectData),
+        tool_call_id: "call_object",
+      });
+      const result = langchainMessagesToHerokuMessages([toolMessage]);
+
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0], {
+        role: "tool",
+        content: JSON.stringify(objectData), // Objects should not be wrapped
+        tool_call_id: "call_object",
       });
     });
 

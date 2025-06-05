@@ -205,20 +205,66 @@ function langchainMessagesToHerokuMessages(messages) {
         else if (message instanceof messages_1.ToolMessage) {
             role = "tool";
             const toolMessage = message;
-            content = toolMessage.content;
+            // Handle tool message content properly
+            // Heroku API expects tool message content to be a string, even for structured data
+            let toolContent = toolMessage.content;
+            // If the content is not already a string, stringify it
+            if (typeof toolContent !== "string") {
+                try {
+                    toolContent = JSON.stringify(toolContent);
+                }
+                catch (e) {
+                    // If JSON.stringify fails, convert to string
+                    toolContent = String(toolContent);
+                }
+            }
+            // Workaround: If content is a JSON array, wrap it in an object
+            // This handles a potential API bug with top-level arrays
+            try {
+                const parsed = JSON.parse(toolContent);
+                if (Array.isArray(parsed)) {
+                    toolContent = JSON.stringify({ result: parsed });
+                }
+            }
+            catch (e) {
+                // If parsing fails, keep the original content
+            }
             return {
                 role,
-                content,
+                content: toolContent,
                 tool_call_id: toolMessage.tool_call_id,
             };
         }
         else if (message instanceof messages_1.FunctionMessage) {
             role = "tool";
             const funcMessage = message;
-            content = funcMessage.content;
+            // Handle function message content properly
+            // Heroku API expects tool message content to be a string, even for structured data
+            let funcContent = funcMessage.content;
+            // If the content is not already a string, stringify it
+            if (typeof funcContent !== "string") {
+                try {
+                    funcContent = JSON.stringify(funcContent);
+                }
+                catch (e) {
+                    // If JSON.stringify fails, convert to string
+                    funcContent = String(funcContent);
+                }
+            }
+            // Workaround: If content is a JSON array, wrap it in an object
+            // This handles a potential API bug with top-level arrays
+            try {
+                const parsed = JSON.parse(funcContent);
+                if (Array.isArray(parsed)) {
+                    funcContent = JSON.stringify({ result: parsed });
+                }
+            }
+            catch (e) {
+                // If parsing fails, keep the original content
+            }
             return {
                 role,
-                content,
+                content: funcContent,
                 name: funcMessage.name,
             };
         }

@@ -13,25 +13,25 @@ const JokeSchema = z.object({
 });
 
 async function main() {
-  console.log("Running HerokuMia Chat with Structured Output Example...");
+  console.log("🎯 Running HerokuMia Chat with Structured Output Example...");
 
   const llm = new HerokuMia({
     temperature: 0.7,
   });
 
   // First, let's test the basic model without structured output
-  console.log("\nTesting basic model response...");
+  console.log("\n🤖 Testing basic model response...");
   try {
     const basicResponse = await llm.invoke([
       new HumanMessage("Tell me a short, clean joke about programming."),
     ]);
-    console.log("Basic response:", basicResponse);
+    console.log("✅ Basic response:", basicResponse);
   } catch (error) {
-    console.error("Error during basic invoke:", error);
+    console.error("❌ Error during basic invoke:", error);
   }
 
   // Now test with tools bound manually
-  console.log("\nTesting with manual tool binding...");
+  console.log("\n🔧 Testing with manual tool binding...");
   try {
     const toolSchema = {
       type: "function" as const,
@@ -62,30 +62,30 @@ async function main() {
         "Tell me a short, clean joke about programming. Use the extract function to structure your response.",
       ),
     ]);
-    console.log("Manual tool response:", manualResponse);
-    console.log("Tool calls:", manualResponse.tool_calls);
+    console.log("✅ Manual tool response:", manualResponse);
+    console.log("🔧 Tool calls:", manualResponse.tool_calls);
   } catch (error) {
-    console.error("Error during manual tool invoke:", error);
+    console.error("❌ Error during manual tool invoke:", error);
   }
 
   // Create a version of the LLM that can return structured output
-  console.log("\nTesting withStructuredOutput...");
+  console.log("\n🎯 Testing withStructuredOutput...");
   const structuredLLM = llm.withStructuredOutput(JokeSchema);
 
   try {
-    console.log("\nInvoking structured LLM to get a joke...");
+    console.log("\n🤖 Invoking structured LLM to get a joke...");
     const jokeResponse = await structuredLLM.invoke([
       new HumanMessage("Tell me a short, clean joke about programming."),
     ]);
 
-    console.log("Structured Joke Response:");
+    console.log("✅ Structured Joke Response:");
     console.log("Setup:", jokeResponse.setup);
     console.log("Punchline:", jokeResponse.punchline);
     if (jokeResponse.explanation) {
       console.log("Explanation:", jokeResponse.explanation);
     }
   } catch (error) {
-    console.error("Error during structured LLM invoke:", error);
+    console.error("❌ Error during structured LLM invoke:", error);
   }
 
   // Example with a more complex schema
@@ -104,15 +104,15 @@ async function main() {
   const analysisLLM = llm.withStructuredOutput(AnalysisSchema);
 
   try {
-    console.log("\nInvoking structured LLM for text analysis...");
+    console.log("\n🔬 Invoking structured LLM for text analysis...");
     const analysisResponse = await analysisLLM.invoke([
       new HumanMessage(
         "LangChain Expression Language (LCEL) makes it easy to build complex chains from basic components. It's a powerful and flexible way to work with LLMs.",
       ),
     ]);
-    console.log("Structured Analysis Response:", analysisResponse);
+    console.log("✅ Structured Analysis Response:", analysisResponse);
   } catch (error) {
-    console.error("Error during structured LLM analysis invoke:", error);
+    console.error("❌ Error during structured LLM analysis invoke:", error);
   }
 }
 

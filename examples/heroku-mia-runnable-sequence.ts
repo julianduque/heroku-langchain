@@ -7,7 +7,7 @@ import {
 } from "@langchain/core/runnables";
 
 async function main() {
-  console.log("Running HerokuMia RunnableSequence Chaining Example...");
+  console.log("⛓️ Running HerokuMia RunnableSequence Chaining Example...");
 
   const llm = new HerokuMia({
     temperature: 0.7,
@@ -62,19 +62,19 @@ async function main() {
 
   try {
     console.log(
-      "\nInvoking the chained sequence with RunnablePassthrough.assign...",
+      "\n⛓️ Invoking the chained sequence with RunnablePassthrough.assign...",
     );
     const initialInput = {
       theme: "artificial intelligence taking over a city",
     };
     const finalResult = await runnable.invoke(initialInput);
 
-    console.log("\nInitial Theme:", initialInput.theme);
-    console.log("\nGenerated Movie Pitch:");
+    console.log("\n🎬 Initial Theme:", initialInput.theme);
+    console.log("\n🎭 Generated Movie Pitch:");
     console.log(finalResult);
   } catch (error) {
     console.error(
-      "Error during HerokuMia RunnableSequence chain execution:",
+      "❌ Error during HerokuMia RunnableSequence chain execution:",
       error,
     );
     if (
@@ -82,10 +82,10 @@ async function main() {
       error.message.includes("Missing value for input variable")
     ) {
       console.error(
-        "This error often means a prompt template did not receive an expected variable.",
+        "💡 This error often means a prompt template did not receive an expected variable.",
       );
       console.error(
-        "Ensure all inputs to prompts (e.g., 'theme', 'concept') are correctly passed through the chain.",
+        "   Ensure all inputs to prompts (e.g., 'theme', 'concept') are correctly passed through the chain.",
       );
     }
   }

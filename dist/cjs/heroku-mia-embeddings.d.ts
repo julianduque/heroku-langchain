@@ -98,11 +98,15 @@ export declare class HerokuMiaEmbeddings extends Embeddings {
     /**
      * Creates a new HerokuMiaEmbeddings instance.
      *
-     * @param fields - Configuration options for the Heroku embeddings model
+     * @param fields - Optional configuration options for the Heroku embeddings model
      * @throws {Error} When model ID is not provided and EMBEDDING_MODEL_ID environment variable is not set
      *
      * @example
      * ```typescript
+     * // Basic usage with defaults
+     * const embeddings = new HerokuMiaEmbeddings();
+     *
+     * // With custom configuration
      * const embeddings = new HerokuMiaEmbeddings({
      *   model: "cohere-embed-multilingual",
      *   apiKey: "your-embedding-api-key",

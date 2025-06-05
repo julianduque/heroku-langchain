@@ -115,11 +115,15 @@ export declare class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOpti
     /**
      * Creates a new HerokuMiaAgent instance.
      *
-     * @param fields - Configuration options for the Heroku Mia Agent
+     * @param fields - Optional configuration options for the Heroku Mia Agent
      * @throws {Error} When model ID is not provided and INFERENCE_MODEL_ID environment variable is not set
      *
      * @example
      * ```typescript
+     * // Basic usage with defaults
+     * const agent = new HerokuMiaAgent();
+     *
+     * // With custom configuration
      * const agent = new HerokuMiaAgent({
      *   model: "claude-3-7-sonnet",
      *   temperature: 0.3,
@@ -144,7 +148,7 @@ export declare class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOpti
      * });
      * ```
      */
-    constructor(fields: HerokuMiaAgentFields);
+    constructor(fields?: HerokuMiaAgentFields);
     /**
      * Returns the LLM type identifier for this agent.
      * @returns The string "HerokuMiaAgent"

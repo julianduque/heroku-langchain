@@ -21,6 +21,7 @@ Integration with Heroku's Managed Inference API (/v1/chat/completions) for direc
 - [x] Assessed `getNumTokens()` (deferred due to lack of reliable tokenization strategy).
 - [x] Reviewed error handling for `/v1/chat/completions` (current implementation is robust; further refinements need more API specifics).
 - [x] Add LangSmith traceability support: Confirmed that explicit handleLLMStart/onLLMStart calls are not needed; BaseChatModel handles run tracking. Removed all direct calls for compatibility with current LangChain versions.
+- [x] Fix tool message content formatting for structured data (arrays/objects) - Implemented workaround to wrap JSON arrays in objects { result: array } to handle potential Heroku API bug with top-level arrays
 
 ## In Progress Tasks
 

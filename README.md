@@ -293,22 +293,26 @@ Complete working examples are available in the `examples/` folder, organized by 
 
 ### Chat Completions (`HerokuMia`)
 
-- **`examples/heroku-mia-chat-example.ts`** - Basic chat completion usage
-- **`examples/heroku-mia-chat-custom-tool.ts`** - Using custom tools with function calling
-- **`examples/heroku-mia-chat-structured-output.ts`** - Structured output with Zod schemas
+- **`examples/heroku-mia-chat-example.ts`** - Basic chat completion and streaming usage
+- **`examples/heroku-mia-chat-custom-tool.ts`** - Custom weather tool with function calling
+- **`examples/heroku-mia-chat-structured-output.ts`** - Structured output with Zod schemas for jokes and text analysis
 - **`examples/heroku-mia-chat-wikipedia-tool.ts`** - Advanced tool integration with Wikipedia search
-- **`examples/heroku-mia-chat-lcel-prompt.ts`** - Using LangChain Expression Language (LCEL) with prompts
-- **`examples/heroku-mia-runnable-sequence.ts`** - Building complex chains with LCEL
-- **`examples/heroku-mia-langraph.ts`** - Integration with LangGraph for complex workflows
+- **`examples/heroku-mia-chat-lcel-prompt.ts`** - Using LangChain Expression Language (LCEL) with prompt templates
+- **`examples/heroku-mia-runnable-sequence.ts`** - Building complex chains with LCEL and RunnablePassthrough
+- **`examples/heroku-mia-langraph.ts`** - Multi-agent workflow with LangGraph for weather analysis
 
 ### Agents (`HerokuMiaAgent`)
 
 - **`examples/heroku-mia-agent-example.ts`** - Using Heroku tools with agents to execute commands on Heroku apps
-- **`examples/heroku-mia-agent-example-mcp.ts`** - Using MCP tools for web search and external services
+- **`examples/heroku-mia-agent-example-mcp.ts`** - Using MCP tools with agents for web search and external services
 
 ### Text Embeddings (`HerokuMiaEmbeddings`)
 
-- **`examples/heroku-mia-embeddings-example.ts`** - Complete embeddings workflow including similarity search
+- **`examples/heroku-mia-embeddings-example.ts`** - Complete embeddings workflow including similarity search and document embedding
+
+### Advanced Integrations
+
+- **`examples/heroku-mia-langraph-mcp.ts`** - LangGraph with MCP tools for database interactions
 
 ### Running Examples
 
