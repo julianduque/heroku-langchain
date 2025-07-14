@@ -1,4 +1,3 @@
-import { AIMessage, ToolMessage, FunctionMessage, HumanMessage, SystemMessage, } from "@langchain/core/messages";
 import { convertToOpenAIFunction } from "@langchain/core/utils/function_calling";
 /**
  * Default Heroku Inference API base URL.
@@ -170,101 +169,104 @@ export function langchainMessagesToHerokuMessages(messages) {
         let role;
         let content = "";
         const additionalArgs = {};
-        if (message instanceof HumanMessage) {
-            role = "user";
-            content = message.content;
-        }
-        else if (message instanceof AIMessage) {
-            role = "assistant";
-            const aiMessage = message;
-            content = aiMessage.content;
-            if (aiMessage.tool_calls && aiMessage.tool_calls.length > 0) {
-                additionalArgs.tool_calls = aiMessage.tool_calls.map((tc) => ({
-                    id: tc.id,
-                    type: "function",
-                    function: {
-                        name: tc.name,
-                        arguments: typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args),
-                    },
-                }));
-            }
-        }
-        else if (message instanceof SystemMessage) {
-            role = "system";
-            content = message.content;
-        }
-        else if (message instanceof ToolMessage) {
-            role = "tool";
-            const toolMessage = message;
-            // Handle tool message content properly
-            // Heroku API expects tool message content to be a string, even for structured data
-            let toolContent = toolMessage.content;
-            // If the content is not already a string, stringify it
-            if (typeof toolContent !== "string") {
+        // Use getType() method instead of instanceof for more reliable type detection
+        const messageType = message.getType();
+        switch (messageType) {
+            case "human":
+                role = "user";
+                content = message.content;
+                break;
+            case "ai":
+                role = "assistant";
+                const aiMessage = message;
+                content = aiMessage.content;
+                if (aiMessage.tool_calls && aiMessage.tool_calls.length > 0) {
+                    additionalArgs.tool_calls = aiMessage.tool_calls.map((tc) => ({
+                        id: tc.id,
+                        type: "function",
+                        function: {
+                            name: tc.name,
+                            arguments: typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args),
+                        },
+                    }));
+                }
+                break;
+            case "system":
+                role = "system";
+                content = message.content;
+                break;
+            case "tool":
+                role = "tool";
+                const toolMessage = message;
+                // Handle tool message content properly
+                // Heroku API expects tool message content to be a string, even for structured data
+                let toolContent = toolMessage.content;
+                // If the content is not already a string, stringify it
+                if (typeof toolContent !== "string") {
+                    try {
+                        toolContent = JSON.stringify(toolContent);
+                    }
+                    catch (e) {
+                        // If JSON.stringify fails, convert to string
+                        toolContent = String(toolContent);
+                    }
+                }
+                // Workaround: If content is a JSON array or number, wrap it in an object
+                // This handles a potential API bug with top-level arrays
                 try {
-                    toolContent = JSON.stringify(toolContent);
+                    const parsed = JSON.parse(toolContent);
+                    if (Array.isArray(parsed) ||
+                        typeof parsed === "number" ||
+                        typeof parsed === "boolean") {
+                        toolContent = JSON.stringify({ result: parsed });
+                    }
                 }
                 catch (e) {
-                    // If JSON.stringify fails, convert to string
-                    toolContent = String(toolContent);
+                    // If parsing fails, keep the original content
                 }
-            }
-            // Workaround: If content is a JSON array, wrap it in an object
-            // This handles a potential API bug with top-level arrays
-            try {
-                const parsed = JSON.parse(toolContent);
-                if (Array.isArray(parsed)) {
-                    toolContent = JSON.stringify({ result: parsed });
+                return {
+                    role,
+                    content: toolContent,
+                    tool_call_id: toolMessage.tool_call_id,
+                };
+            case "function":
+                role = "tool";
+                const funcMessage = message;
+                // Handle function message content properly
+                // Heroku API expects tool message content to be a string, even for structured data
+                let funcContent = funcMessage.content;
+                // If the content is not already a string, stringify it
+                if (typeof funcContent !== "string") {
+                    try {
+                        funcContent = JSON.stringify(funcContent);
+                    }
+                    catch (e) {
+                        // If JSON.stringify fails, convert to string
+                        funcContent = String(funcContent);
+                    }
                 }
-            }
-            catch (e) {
-                // If parsing fails, keep the original content
-            }
-            return {
-                role,
-                content: toolContent,
-                tool_call_id: toolMessage.tool_call_id,
-            };
-        }
-        else if (message instanceof FunctionMessage) {
-            role = "tool";
-            const funcMessage = message;
-            // Handle function message content properly
-            // Heroku API expects tool message content to be a string, even for structured data
-            let funcContent = funcMessage.content;
-            // If the content is not already a string, stringify it
-            if (typeof funcContent !== "string") {
+                // Workaround: If content is a JSON array, wrap it in an object
+                // This handles a potential API bug with top-level arrays
                 try {
-                    funcContent = JSON.stringify(funcContent);
+                    const parsed = JSON.parse(funcContent);
+                    if (Array.isArray(parsed)) {
+                        funcContent = JSON.stringify({ result: parsed });
+                    }
                 }
                 catch (e) {
-                    // If JSON.stringify fails, convert to string
-                    funcContent = String(funcContent);
+                    // If parsing fails, keep the original content
                 }
-            }
-            // Workaround: If content is a JSON array, wrap it in an object
-            // This handles a potential API bug with top-level arrays
-            try {
-                const parsed = JSON.parse(funcContent);
-                if (Array.isArray(parsed)) {
-                    funcContent = JSON.stringify({ result: parsed });
-                }
-            }
-            catch (e) {
-                // If parsing fails, keep the original content
-            }
-            return {
-                role,
-                content: funcContent,
-                name: funcMessage.name,
-            };
-        }
-        else {
-            // This case should ideally not be reached if all message types are handled.
-            // Consider throwing an error or logging a more specific warning.
-            console.warn(`Unknown message instance type: ${message.constructor.name}`);
-            role = "user"; // Fallback role
-            content = message.content; // Fallback content extraction
+                return {
+                    role,
+                    content: funcContent,
+                    name: funcMessage.name,
+                };
+            default:
+                // Fallback for unknown message types
+                console.warn(`Unknown message type: ${messageType} (constructor: ${message.constructor.name})`);
+                role = "user"; // Fallback role
+                content = message.content; // Fallback content extraction
+                break;
         }
         const herokuMessage = {
             role,

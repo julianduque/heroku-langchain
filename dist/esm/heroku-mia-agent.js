@@ -396,12 +396,8 @@ export class HerokuMiaAgent extends BaseChatModel {
                                     // Find the original tool definition to include runtime_params
                                     const originalTool = this.tools?.find((tool) => {
                                         // For heroku_tool, match by name
-                                        if (tool.type === "heroku_tool" &&
-                                            tool.name === tc.function?.name) {
-                                            return true;
-                                        }
                                         // For mcp tools, match by name (which includes the full mcp path)
-                                        if (tool.type === "mcp" &&
+                                        if ((tool.type === "heroku_tool" || tool.type === "mcp") &&
                                             tool.name === tc.function?.name) {
                                             return true;
                                         }
@@ -439,11 +435,7 @@ export class HerokuMiaAgent extends BaseChatModel {
                                     if (runManager && toolCall.function?.name) {
                                         // Find the original tool for enhanced logging
                                         const originalTool = this.tools?.find((tool) => {
-                                            if (tool.type === "heroku_tool" &&
-                                                tool.name === toolCall.function?.name) {
-                                                return true;
-                                            }
-                                            if (tool.type === "mcp" &&
+                                            if ((tool.type === "heroku_tool" || tool.type === "mcp") &&
                                                 tool.name === toolCall.function?.name) {
                                                 return true;
                                             }

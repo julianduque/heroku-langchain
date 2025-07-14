@@ -496,8 +496,7 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
                       // For heroku_tool, match by name
                       // For mcp tools, match by name (which includes the full mcp path)
                       if (
-                        tool.type === "heroku_tool" &&
-                        tool.type === "mcp" &&
+                        (tool.type === "heroku_tool" || tool.type === "mcp") &&
                         tool.name === tc.function?.name
                       ) {
                         return true;
