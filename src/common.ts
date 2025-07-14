@@ -273,8 +273,8 @@ export function langchainMessagesToHerokuMessages(
           }
         }
 
-        // Workaround: If content is a JSON array or number, wrap it in an object
-        // This handles a potential API bug with top-level arrays
+        // Workaround: If content is a JSON array, boolean, or number, wrap it in an object
+        // This handles a potential API bug with JSON parsing
         try {
           const parsed = JSON.parse(toolContent);
           if (
@@ -312,11 +312,15 @@ export function langchainMessagesToHerokuMessages(
           }
         }
 
-        // Workaround: If content is a JSON array, wrap it in an object
-        // This handles a potential API bug with top-level arrays
+        // Workaround: If content is a JSON array, boolean, or number, wrap it in an object
+        // This handles a potential API bug with JSON parsing
         try {
           const parsed = JSON.parse(funcContent);
-          if (Array.isArray(parsed)) {
+          if (
+            Array.isArray(parsed) ||
+            typeof parsed === "number" ||
+            typeof parsed === "boolean"
+          ) {
             funcContent = JSON.stringify({ result: parsed });
           }
         } catch (e) {
