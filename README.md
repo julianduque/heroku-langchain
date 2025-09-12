@@ -12,7 +12,7 @@ pnpm install heroku-langchain
 
 This SDK includes three main classes:
 
-- **`HerokuMia`**: Chat completions with support for function calling, structured outputs, and streaming
+- **`ChatHeroku`**: Chat completions with support for function calling, structured outputs, and streaming
 - **`HerokuMiaAgent`**: Autonomous agents with access to Heroku tools and MCP (Model Context Protocol) tools
 - **`HerokuMiaEmbeddings`**: Text embeddings for similarity search, RAG applications, and semantic understanding
 
@@ -20,17 +20,17 @@ This SDK includes three main classes:
 
 ### Chat Completions
 
-Here's a simple example of how to use the `HerokuMia` class for chat completions:
+Here's a simple example of how to use the `ChatHeroku` class for chat completions:
 
 ```typescript
-import { HerokuMia } from "heroku-langchain";
+import { ChatHeroku } from "heroku-langchain";
 import { HumanMessage } from "@langchain/core/messages";
 
 async function main() {
   // Ensure INFERENCE_MODEL_ID and INFERENCE_KEY are set in your environment
   // or pass them directly to the constructor:
-  // const chat = new HerokuMia({ model: "your-model-id", apiKey: "your-api-key" });
-  const chat = new HerokuMia({ model: "gpt-oss-120b" });
+  // const chat = new ChatHeroku({ model: "your-model-id", apiKey: "your-api-key" });
+  const chat = new ChatHeroku({ model: "gpt-oss-120b" });
 
   const messages = [new HumanMessage("Hello, how are you doing today?")];
 
@@ -115,7 +115,7 @@ The SDK can utilize the following environment variables:
 You can bind tools (functions) to the model for more complex interactions.
 
 ```typescript
-import { HerokuMia } from "heroku-langchain";
+import { ChatHeroku } from "heroku-langchain";
 import { HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
@@ -140,7 +140,7 @@ class GetWeatherTool extends StructuredTool {
 }
 
 async function main() {
-  const chat = new HerokuMia({ model: "your-model-id" }).bindTools([
+  const chat = new ChatHeroku({ model: "your-model-id" }).bindTools([
     new GetWeatherTool(),
   ]);
 
@@ -291,7 +291,7 @@ async function mcpExample() {
 
 Complete working examples are available in the `examples/` folder, organized by functionality:
 
-### Chat Completions (`HerokuMia`)
+### Chat Completions (`ChatHeroku`)
 
 - **`examples/heroku-mia-chat-example.ts`** - Basic chat completion and streaming usage
 - **`examples/heroku-mia-chat-custom-tool.ts`** - Custom weather tool with function calling
@@ -346,7 +346,7 @@ npx tsx examples/heroku-mia-embeddings-example.ts
 
 For more detailed information on the available classes, methods, and types, please refer to the source code and TypeDoc generated documentation (if available).
 
-- `HerokuMia`: For chat completions with function calling and structured output support.
+- `ChatHeroku`: For chat completions with function calling and structured output support.
 - `HerokuMiaAgent`: For agent-based interactions with Heroku and MCP tools.
 - `HerokuMiaEmbeddings`: For generating text embeddings and semantic search.
 - `types.ts`: Contains all relevant TypeScript type definitions.
@@ -357,7 +357,7 @@ This project uses Node.js's native test runner with TypeScript support. The test
 
 - Common utilities (configuration, message transformation, tool conversion)
 - Type definitions and interfaces
-- HerokuMia class functionality
+- ChatHeroku class functionality
 - HerokuMiaAgent class functionality
 - HerokuMiaEmbeddings class functionality
 - Integration tests
@@ -378,7 +378,7 @@ The test files are organized as follows:
 
 - `test/common.test.ts` - Tests for utility functions and error handling
 - `test/types.test.ts` - Type definition validation tests
-- `test/heroku-mia.test.ts` - HerokuMia class tests
+- `test/chat-heroku.test.ts` - ChatHeroku class tests
 - `test/heroku-mia-agent.test.ts` - HerokuMiaAgent class tests
 - `test/integration.test.ts` - End-to-end integration tests
 

@@ -32,7 +32,7 @@ import {
  * multi-step reasoning tasks. Agents have access to Heroku-specific tools like app management,
  * database operations, and can integrate with external services via MCP (Model Context Protocol).
  *
- * Unlike the basic HerokuMia model, agents are designed for autonomous task execution with
+ * Unlike the basic ChatHeroku model, agents are designed for autonomous task execution with
  * built-in tool calling capabilities and advanced reasoning patterns.
  *
  * @example

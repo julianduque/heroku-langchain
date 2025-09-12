@@ -1,11 +1,11 @@
-import { HerokuMia } from "../src"; // Adjusted for local example structure
+import { ChatHeroku } from "../src"; // Adjusted for local example structure
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 
 async function main() {
-  console.log("🔗 Running HerokuMia Chat with LCEL PromptTemplate Example...");
+  console.log("🔗 Running ChatHeroku Chat with LCEL PromptTemplate Example...");
 
-  const llm = new HerokuMia({
+  const llm = new ChatHeroku({
     temperature: 0.7,
   });
 

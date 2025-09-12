@@ -6,7 +6,7 @@
  * LangChain applications.
  *
  * Key features:
- * - **Chat Models**: Access to various LLMs via HerokuMia class
+ * - **Chat Models**: Access to various LLMs via ChatHeroku class
  * - **Agents**: Intelligent agents with tool execution via HerokuMiaAgent class
  * - **Embeddings**: Text embeddings generation via HerokuMiaEmbeddings class
  * - **Function Calling**: Support for structured tools and function calling
@@ -15,11 +15,11 @@
  *
  * @example Basic Usage
  * ```typescript
- * import { HerokuMia, HerokuMiaEmbeddings } from "heroku-langchain";
+ * import { ChatHeroku, HerokuMiaEmbeddings } from "heroku-langchain";
  * import { HumanMessage } from "@langchain/core/messages";
  *
  * // Chat completion
- * const model = new HerokuMia({
+ * const model = new ChatHeroku({
  *   model: "gpt-oss-120b",
  *   apiKey: process.env.INFERENCE_KEY
  * });
@@ -48,14 +48,14 @@
 
 // Core Model Classes
 /**
- * HerokuMia - Chat model for Heroku's Managed Inference API
+ * ChatHeroku - Chat model for Heroku's Managed Inference API
  *
  * Provides access to various language models hosted on Heroku's infrastructure
  * with support for function calling, structured outputs, and streaming responses.
  *
- * @see {@link HerokuMia} for detailed documentation
+ * @see {@link ChatHeroku} for detailed documentation
  */
-export { HerokuMia } from "./heroku-mia.js";
+export { ChatHeroku } from "./chat-heroku.js";
 
 /**
  * Configuration options and parameter types for structured output functionality.
@@ -65,7 +65,7 @@ export { HerokuMia } from "./heroku-mia.js";
 export type {
   StructuredOutputMethodOptions,
   StructuredOutputMethodParams,
-} from "./heroku-mia.js";
+} from "./chat-heroku.js";
 
 /**
  * HerokuMiaAgent - Intelligent agent with tool execution capabilities
@@ -94,14 +94,14 @@ export { HerokuMiaEmbeddings } from "./heroku-mia-embeddings.js";
  */
 export { HerokuApiError } from "./common.js";
 
-// Type Definitions for HerokuMia (Chat Completions)
+// Type Definitions for ChatHeroku (Chat Completions)
 /**
- * Configuration options for creating a HerokuMia instance.
- * @see {@link HerokuMiaFields}
+ * Configuration options for creating a ChatHeroku instance.
+ * @see {@link ChatHerokuFields}
  */
 export type {
-  HerokuMiaFields,
-  HerokuMiaCallOptions,
+  ChatHerokuFields,
+  ChatHerokuCallOptions,
   HerokuChatMessageRole,
   HerokuToolCall,
   HerokuToolMessageContent,

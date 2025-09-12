@@ -20,8 +20,8 @@ import {
 } from "@langchain/core/runnables";
 import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
 import {
-  HerokuMiaFields,
-  HerokuMiaCallOptions,
+  ChatHerokuFields,
+  ChatHerokuCallOptions,
   HerokuChatCompletionRequest,
   HerokuChatCompletionResponse,
   HerokuChatCompletionStreamResponse,
@@ -81,7 +81,7 @@ export interface StructuredOutputMethodParams<
 }
 
 /**
- * **HerokuMia** - Heroku Managed Inference API LangChain Integration
+ * **ChatHeroku** - Heroku Managed Inference API LangChain Integration
  *
  * A LangChain-compatible chat model that interfaces with Heroku's Managed Inference API (Mia).
  * This class provides access to various language models hosted on Heroku's infrastructure,
@@ -89,11 +89,12 @@ export interface StructuredOutputMethodParams<
  *
  * @example
  * ```typescript
- * import { HerokuMia } from "heroku-langchain";
+ * import { ChatHeroku } from "heroku-langchain";
  * import { HumanMessage } from "@langchain/core/messages";
  *
  * // Basic usage
- * const model = new HerokuMia({
+
+ * const model = new ChatHeroku({
  *   model: "gpt-oss-120b",
  *   temperature: 0.7,
  *   apiKey: process.env.INFERENCE_KEY,
@@ -155,11 +156,11 @@ export interface StructuredOutputMethodParams<
  * }
  * ```
  *
- * @see {@link HerokuMiaFields} for constructor options
- * @see {@link HerokuMiaCallOptions} for runtime call options
+ * @see {@link ChatHerokuFields} for constructor options
+ * @see {@link ChatHerokuCallOptions} for runtime call options
  * @see [Heroku Managed Inference API Documentation](https://devcenter.heroku.com/articles/heroku-inference-api-v1-chat-completions)
  */
-export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
+export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
   // Fields to store constructor parameters
   protected model: string;
   protected temperature?: number;
@@ -175,14 +176,14 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
 
   /**
    * Returns the LangChain identifier for this model class.
-   * @returns The string "HerokuMia"
+   * @returns The string "ChatHeroku"
    */
   static lc_name() {
-    return "HerokuMia";
+    return "ChatHeroku";
   }
 
   /**
-   * Creates a new HerokuMia instance.
+   * Creates a new ChatHeroku instance.
    *
    * @param fields - Optional configuration options for the Heroku Mia model
    * @throws {Error} When model ID is not provided and INFERENCE_MODEL_ID environment variable is not set
@@ -190,10 +191,11 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
    * @example
    * ```typescript
    * // Basic usage with defaults
-   * const model = new HerokuMia();
+   * const model = new ChatHeroku();
    *
    * // With custom configuration
-   * const model = new HerokuMia({
+
+   * const model = new ChatHeroku({
    *   model: "gpt-oss-120b",
    *   temperature: 0.7,
    *   maxTokens: 1000,
@@ -202,7 +204,7 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
    * });
    * ```
    */
-  constructor(fields?: HerokuMiaFields) {
+  constructor(fields?: ChatHerokuFields) {
     super(fields ?? {});
     const modelFromEnv =
       typeof process !== "undefined" &&
@@ -229,21 +231,21 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
 
   /**
    * Returns the LLM type identifier for this model.
-   * @returns The string "HerokuMia"
+   * @returns The string "ChatHeroku"
    */
   _llmType(): string {
-    return "HerokuMia";
+    return "ChatHeroku";
   }
 
   /**
    * Bind tools to this chat model for function calling capabilities.
    *
-   * This method creates a new instance of HerokuMia with the specified tools pre-bound,
+   * This method creates a new instance of ChatHeroku with the specified tools pre-bound,
    * enabling the model to call functions during conversations. The tools will be
    * automatically included in all subsequent calls to the model.
    *
    * @param tools - A list of StructuredTool instances or tool definitions to bind to the model
-   * @returns A new HerokuMia instance with the tools bound and tool_choice set to "auto"
+   * @returns A new ChatHeroku instance with the tools bound and tool_choice set to "auto"
    *
    * @example
    * ```typescript
@@ -274,11 +276,11 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
    * ]);
    * ```
    */
-  bindTools(tools: (StructuredTool | Record<string, any>)[]): HerokuMia {
+  bindTools(tools: (StructuredTool | Record<string, any>)[]): ChatHeroku {
     const herokuTools = langchainToolsToHerokuTools(tools as StructuredTool[]);
 
-    // Create a new HerokuMia instance with the same configuration but with tools pre-bound
-    const boundInstance = new HerokuMia({
+    // Create a new ChatHeroku instance with the same configuration but with tools pre-bound
+    const boundInstance = new ChatHeroku({
       model: this.model,
       temperature: this.temperature,
       maxTokens: this.maxTokens,
@@ -296,7 +298,7 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
     const originalInvocationParams =
       boundInstance.invocationParams.bind(boundInstance);
     boundInstance.invocationParams = function (
-      options?: Partial<HerokuMiaCallOptions>,
+      options?: Partial<ChatHerokuCallOptions>,
     ) {
       const params = originalInvocationParams(options);
       // Merge bound tools with any tools passed in options
@@ -323,8 +325,8 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
    *
    * @internal
    */
-  invocationParams(options?: Partial<HerokuMiaCallOptions>): Omit<
-    HerokuMiaFields,
+  invocationParams(options?: Partial<ChatHerokuCallOptions>): Omit<
+    ChatHerokuFields,
     keyof BaseChatModelParams
   > & {
     [key: string]: any;
@@ -614,7 +616,7 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
               });
             } catch (e) {
               console.warn(
-                `[HerokuMia] Failed to parse tool call arguments for id ${id}: ${fullArgsString}`,
+                `[ChatHeroku] Failed to parse tool call arguments for id ${id}: ${fullArgsString}`,
                 e,
               );
               aggregatedToolCalls.push({
@@ -710,7 +712,7 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
     const params = this.invocationParams({
       ...options,
       stream: true,
-    } as HerokuMiaCallOptions);
+    } as ChatHerokuCallOptions);
 
     let herokuToolChoice: HerokuChatCompletionRequest["tool_choice"];
     if (
@@ -991,11 +993,11 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
 
     if (method === "jsonMode") {
       throw new Error(
-        "HerokuMia does not support 'jsonMode'. Use 'functionCalling' instead.",
+        "ChatHeroku does not support 'jsonMode'. Use 'functionCalling' instead.",
       );
     }
 
-    let llm: HerokuMia;
+    let llm: ChatHeroku;
     let outputParser: JsonOutputKeyToolsParser<RunOutput>;
 
     if (this.isZodSchema(schema)) {
@@ -1018,8 +1020,8 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
         },
       };
 
-      // Create a new HerokuMia instance with the same configuration but with tools pre-bound
-      llm = new HerokuMia({
+      // Create a new ChatHeroku instance with the same configuration but with tools pre-bound
+      llm = new ChatHeroku({
         model: this.model,
         temperature: this.temperature,
         maxTokens: this.maxTokens,
@@ -1036,7 +1038,7 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
       // Override the invocationParams method to include the bound tools and force tool choice
       const originalInvocationParams = llm.invocationParams.bind(llm);
       llm.invocationParams = function (
-        options?: Partial<HerokuMiaCallOptions>,
+        options?: Partial<ChatHerokuCallOptions>,
       ) {
         const params = originalInvocationParams(options);
         // Directly pass the tool schema instead of using langchainToolsToHerokuTools
@@ -1071,8 +1073,8 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
         },
       };
 
-      // Create a new HerokuMia instance with the same configuration but with tools pre-bound
-      llm = new HerokuMia({
+      // Create a new ChatHeroku instance with the same configuration but with tools pre-bound
+      llm = new ChatHeroku({
         model: this.model,
         temperature: this.temperature,
         maxTokens: this.maxTokens,
@@ -1089,7 +1091,7 @@ export class HerokuMia extends BaseChatModel<HerokuMiaCallOptions> {
       // Override the invocationParams method to include the bound tools and force tool choice
       const originalInvocationParams = llm.invocationParams.bind(llm);
       llm.invocationParams = function (
-        options?: Partial<HerokuMiaCallOptions>,
+        options?: Partial<ChatHerokuCallOptions>,
       ) {
         const params = originalInvocationParams(options);
         // Directly pass the tool schema instead of using langchainToolsToHerokuTools
