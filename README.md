@@ -13,7 +13,7 @@ pnpm install heroku-langchain
 This SDK includes three main classes:
 
 - **`ChatHeroku`**: Chat completions with support for function calling, structured outputs, and streaming
-- **`HerokuMiaAgent`**: Autonomous agents with access to Heroku tools and MCP (Model Context Protocol) tools
+- **`HerokuAgent`**: Autonomous agents with access to Heroku tools and MCP (Model Context Protocol) tools
 - **`HerokuMiaEmbeddings`**: Text embeddings for similarity search, RAG applications, and semantic understanding
 
 ## Basic Usage
@@ -167,15 +167,15 @@ main();
 
 ### Using Agents
 
-The `HerokuMiaAgent` class allows for more autonomous interactions with access to Heroku tools and MCP (Model Context Protocol) tools. Here's an example demonstrating agent usage:
+The `HerokuAgent` class allows for more autonomous interactions with access to Heroku tools and MCP (Model Context Protocol) tools. Here's an example demonstrating agent usage:
 
 ```typescript
-import { HerokuMiaAgent } from "heroku-langchain";
+import { HerokuAgent } from "heroku-langchain";
 import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgentToolDefinition } from "heroku-langchain/types";
 
 async function agentExample() {
-  console.log("Running HerokuMiaAgent Example...");
+  console.log("Running HerokuAgent Example...");
 
   const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
   const tools: HerokuAgentToolDefinition[] = [
@@ -199,13 +199,13 @@ async function agentExample() {
     "   Set HEROKU_APP_NAME environment variable to use a different app.",
   );
 
-  const agentExecutor = new HerokuMiaAgent({
+  const agentExecutor = new HerokuAgent({
     tools: tools,
   });
 
   try {
     console.log("\n=== Heroku Tool Execution ===");
-    console.log("\nStreaming HerokuMiaAgent...");
+    console.log("\nStreaming HerokuAgent...");
 
     const stream = await agentExecutor.stream([
       new HumanMessage(
@@ -258,7 +258,7 @@ agentExample().catch(console.error);
 You can also use MCP (Model Context Protocol) tools with the agent:
 
 ```typescript
-import { HerokuMiaAgent } from "heroku-langchain";
+import { HerokuAgent } from "heroku-langchain";
 import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgentToolDefinition } from "heroku-langchain/types";
 
@@ -270,7 +270,7 @@ async function mcpExample() {
     },
   ];
 
-  const agentExecutor = new HerokuMiaAgent({
+  const agentExecutor = new HerokuAgent({
     tools: tools,
   });
 
@@ -301,10 +301,10 @@ Complete working examples are available in the `examples/` folder, organized by 
 - **`examples/heroku-mia-runnable-sequence.ts`** - Building complex chains with LCEL and RunnablePassthrough
 - **`examples/heroku-mia-langraph.ts`** - Multi-agent workflow with LangGraph for weather analysis
 
-### Agents (`HerokuMiaAgent`)
+### Agents (`HerokuAgent`)
 
-- **`examples/heroku-mia-agent-example.ts`** - Using Heroku tools with agents to execute commands on Heroku apps
-- **`examples/heroku-mia-agent-example-mcp.ts`** - Using MCP tools with agents for web search and external services
+- **`examples/heroku-agent-example.ts`** - Using Heroku tools with agents to execute commands on Heroku apps
+- **`examples/heroku-agent-example-mcp.ts`** - Using MCP tools with agents for web search and external services
 
 ### Text Embeddings (`HerokuMiaEmbeddings`)
 
@@ -336,7 +336,7 @@ npx tsx examples/heroku-mia-chat-example.ts
 npx tsx examples/heroku-mia-chat-structured-output.ts
 
 # Run an agent example
-npx tsx examples/heroku-mia-agent-example.ts
+npx tsx examples/heroku-agent-example.ts
 
 # Run the embeddings example
 npx tsx examples/heroku-mia-embeddings-example.ts
@@ -347,7 +347,7 @@ npx tsx examples/heroku-mia-embeddings-example.ts
 For more detailed information on the available classes, methods, and types, please refer to the source code and TypeDoc generated documentation (if available).
 
 - `ChatHeroku`: For chat completions with function calling and structured output support.
-- `HerokuMiaAgent`: For agent-based interactions with Heroku and MCP tools.
+- `HerokuAgent`: For agent-based interactions with Heroku and MCP tools.
 - `HerokuMiaEmbeddings`: For generating text embeddings and semantic search.
 - `types.ts`: Contains all relevant TypeScript type definitions.
 
@@ -358,7 +358,7 @@ This project uses Node.js's native test runner with TypeScript support. The test
 - Common utilities (configuration, message transformation, tool conversion)
 - Type definitions and interfaces
 - ChatHeroku class functionality
-- HerokuMiaAgent class functionality
+- HerokuAgent class functionality
 - HerokuMiaEmbeddings class functionality
 - Integration tests
 
@@ -379,7 +379,7 @@ The test files are organized as follows:
 - `test/common.test.ts` - Tests for utility functions and error handling
 - `test/types.test.ts` - Type definition validation tests
 - `test/chat-heroku.test.ts` - ChatHeroku class tests
-- `test/heroku-mia-agent.test.ts` - HerokuMiaAgent class tests
+- `test/heroku-agent.test.ts` - HerokuAgent class tests
 - `test/integration.test.ts` - End-to-end integration tests
 
 All tests use environment variable mocking to avoid requiring actual API keys during testing.

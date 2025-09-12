@@ -5,7 +5,7 @@ import {
   START,
   StateGraph,
 } from "@langchain/langgraph";
-import { HerokuMiaAgent } from "../src/index.js";
+import { HerokuAgent } from "../src/index.js";
 import { HerokuAgentToolDefinition } from "../src/types.js";
 import { writeFileSync } from "fs";
 
@@ -16,7 +16,7 @@ const tools: HerokuAgentToolDefinition[] = [
   },
 ];
 
-const agent = new HerokuMiaAgent({
+const agent = new HerokuAgent({
   model: "gpt-oss-120b",
   tools,
 });
@@ -245,7 +245,7 @@ generateGraph(graph).catch(console.error);
 
 const run = async () => {
   console.log(
-    "🤖 Running Complex HerokuMiaAgent Weather Analysis with LangGraph...",
+    "🤖 Running Complex HerokuAgent Weather Analysis with LangGraph...",
   );
   console.log("📊 This example will:");
   console.log("  1. Fetch weather data from an API");

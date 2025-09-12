@@ -8,7 +8,7 @@ import type {
   HerokuChatMessage,
   HerokuFunctionTool,
   HerokuChatCompletionRequest,
-  HerokuMiaAgentFields,
+  HerokuAgentFields,
   HerokuAgentToolDefinition,
 } from "../src/types";
 
@@ -196,10 +196,10 @@ describe("Type definitions", () => {
     });
   });
 
-  describe("HerokuMiaAgentFields", () => {
+  describe("HerokuAgentFields", () => {
     test("should accept agent configuration", () => {
       // Test that agent-specific fields are properly typed
-      const fields: Partial<HerokuMiaAgentFields> = {
+      const fields: Partial<HerokuAgentFields> = {
         model: "gpt-oss-120b",
         temperature: 0.7,
         apiKey: "test-key",

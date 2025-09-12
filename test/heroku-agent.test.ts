@@ -1,11 +1,12 @@
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
-import { HerokuMiaAgent } from "../src/heroku-mia-agent";
+import { HerokuAgent } from "../src/heroku-agent";
+import { createHerokuAgent } from "../src/create-heroku-agent";
 import { HerokuApiError } from "../src/common";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
 import type { HerokuAgentToolDefinition } from "../src/types";
 
-describe("HerokuMiaAgent", () => {
+describe("HerokuAgent", () => {
   let originalEnv: Record<string, string | undefined>;
 
   beforeEach(() => {
@@ -31,13 +32,13 @@ describe("HerokuMiaAgent", () => {
 
   describe("Constructor", () => {
     test("should create instance with minimal configuration", () => {
-      const agent = new HerokuMiaAgent({});
+      const agent = new HerokuAgent({});
 
       assert.ok(agent);
     });
 
     test("should create instance with provided configuration", () => {
-      const agent = new HerokuMiaAgent({
+      const agent = new HerokuAgent({
         model: "gpt-oss-120b",
         temperature: 0.7,
         maxTokensPerRequest: 1000,
@@ -65,7 +66,7 @@ describe("HerokuMiaAgent", () => {
         },
       ];
 
-      const agent = new HerokuMiaAgent({
+      const agent = new HerokuAgent({
         tools,
       });
 
@@ -73,7 +74,7 @@ describe("HerokuMiaAgent", () => {
     });
 
     test("should accept additional kwargs", () => {
-      const agent = new HerokuMiaAgent({
+      const agent = new HerokuAgent({
         additionalKwargs: {
           session_id: "test-session",
           metadata: { user_id: "user123" },
@@ -85,10 +86,10 @@ describe("HerokuMiaAgent", () => {
 
     // New tests for optional constructor
     test("should create instance without any parameters when environment variables are set", () => {
-      const agent = new HerokuMiaAgent();
+      const agent = new HerokuAgent();
 
       assert.ok(agent);
-      assert.strictEqual(agent._llmType(), "HerokuMiaAgent");
+      assert.strictEqual(agent._llmType(), "HerokuAgent");
     });
 
     test("should throw error when no parameters and no environment variables", () => {
@@ -98,7 +99,7 @@ describe("HerokuMiaAgent", () => {
       try {
         delete process.env.INFERENCE_MODEL_ID;
 
-        assert.throws(() => new HerokuMiaAgent(), /Heroku model ID not found/);
+        assert.throws(() => new HerokuAgent(), /Heroku model ID not found/);
       } finally {
         // Restore env vars
         if (backupModelId) {
@@ -109,7 +110,7 @@ describe("HerokuMiaAgent", () => {
 
     test("should prioritize constructor parameters over environment variables", () => {
       const customModel = "custom-gpt-agent";
-      const agent = new HerokuMiaAgent({ model: customModel });
+      const agent = new HerokuAgent({ model: customModel });
 
       assert.ok(agent);
       // The invocation params should contain our custom model
@@ -119,7 +120,7 @@ describe("HerokuMiaAgent", () => {
 
     test("should use environment variables when constructor parameters are undefined", () => {
       const envModel = process.env.INFERENCE_MODEL_ID;
-      const agent = new HerokuMiaAgent();
+      const agent = new HerokuAgent();
 
       const params = agent.invocationParams();
       assert.strictEqual(params.model, envModel);
@@ -137,7 +138,7 @@ describe("HerokuMiaAgent", () => {
         },
       ];
 
-      const agent = new HerokuMiaAgent({
+      const agent = new HerokuAgent({
         temperature: customTemperature,
         tools: customTools,
       });
@@ -152,12 +153,12 @@ describe("HerokuMiaAgent", () => {
 
   describe("Model properties", () => {
     test("should have correct _llmType", () => {
-      const agent = new HerokuMiaAgent({});
-      assert.strictEqual(agent._llmType(), "HerokuMiaAgent");
+      const agent = new HerokuAgent({});
+      assert.strictEqual(agent._llmType(), "HerokuAgent");
     });
 
     test("should have invocation params method", () => {
-      const agent = new HerokuMiaAgent({});
+      const agent = new HerokuAgent({});
       const params = agent.invocationParams();
 
       assert.ok(params);
@@ -168,32 +169,32 @@ describe("HerokuMiaAgent", () => {
   describe("Configuration validation", () => {
     test("should accept valid temperature range", () => {
       assert.doesNotThrow(() => {
-        new HerokuMiaAgent({ temperature: 0.0 });
-        new HerokuMiaAgent({ temperature: 0.5 });
-        new HerokuMiaAgent({ temperature: 1.0 });
+        new HerokuAgent({ temperature: 0.0 });
+        new HerokuAgent({ temperature: 0.5 });
+        new HerokuAgent({ temperature: 1.0 });
       });
     });
 
     test("should accept valid topP range", () => {
       assert.doesNotThrow(() => {
-        new HerokuMiaAgent({ topP: 0.1 });
-        new HerokuMiaAgent({ topP: 0.5 });
-        new HerokuMiaAgent({ topP: 1.0 });
+        new HerokuAgent({ topP: 0.1 });
+        new HerokuAgent({ topP: 0.5 });
+        new HerokuAgent({ topP: 1.0 });
       });
     });
 
     test("should accept valid maxTokensPerRequest", () => {
       assert.doesNotThrow(() => {
-        new HerokuMiaAgent({ maxTokensPerRequest: 100 });
-        new HerokuMiaAgent({ maxTokensPerRequest: 1000 });
-        new HerokuMiaAgent({ maxTokensPerRequest: 4000 });
+        new HerokuAgent({ maxTokensPerRequest: 100 });
+        new HerokuAgent({ maxTokensPerRequest: 1000 });
+        new HerokuAgent({ maxTokensPerRequest: 4000 });
       });
     });
 
     test("should accept stop sequences", () => {
       assert.doesNotThrow(() => {
-        new HerokuMiaAgent({ stop: ["STOP"] });
-        new HerokuMiaAgent({ stop: ["END", "FINISH", "DONE"] });
+        new HerokuAgent({ stop: ["STOP"] });
+        new HerokuAgent({ stop: ["END", "FINISH", "DONE"] });
       });
     });
   });
@@ -218,7 +219,7 @@ describe("HerokuMiaAgent", () => {
       ];
 
       assert.doesNotThrow(() => {
-        new HerokuMiaAgent({ tools });
+        new HerokuAgent({ tools });
       });
     });
 
@@ -232,7 +233,7 @@ describe("HerokuMiaAgent", () => {
       ];
 
       assert.doesNotThrow(() => {
-        new HerokuMiaAgent({ tools });
+        new HerokuAgent({ tools });
       });
     });
 
@@ -253,14 +254,14 @@ describe("HerokuMiaAgent", () => {
       ];
 
       assert.doesNotThrow(() => {
-        new HerokuMiaAgent({ tools });
+        new HerokuAgent({ tools });
       });
     });
   });
 
   describe("Call options", () => {
     test("should accept valid call options", () => {
-      const agent = new HerokuMiaAgent({});
+      const agent = new HerokuAgent({});
 
       const callOptions = [
         { metadata: { user_id: "123" } },
@@ -280,7 +281,7 @@ describe("HerokuMiaAgent", () => {
 
   describe("Message handling", () => {
     test("should handle simple message conversations", () => {
-      const _agent = new HerokuMiaAgent({});
+      const _agent = new HerokuAgent({});
       const _messages = [new HumanMessage("Deploy my application")];
 
       // This should not throw any validation errors
@@ -290,7 +291,7 @@ describe("HerokuMiaAgent", () => {
     });
 
     test("should handle complex conversations", () => {
-      const _agent = new HerokuMiaAgent({});
+      const _agent = new HerokuAgent({});
       const _messages = [
         new HumanMessage("What's the status of my app?"),
         new AIMessage("Let me check the status for you."),
@@ -303,7 +304,7 @@ describe("HerokuMiaAgent", () => {
     });
 
     test("should handle streaming responses (mock)", () => {
-      const _agent = new HerokuMiaAgent({
+      const _agent = new HerokuAgent({
         model: "gpt-oss-120b",
         temperature: 0.7,
       });
@@ -314,7 +315,7 @@ describe("HerokuMiaAgent", () => {
     });
 
     test("should handle non-streaming responses (mock)", () => {
-      const _agent = new HerokuMiaAgent({
+      const _agent = new HerokuAgent({
         model: "gpt-oss-120b",
         temperature: 0.7,
       });
@@ -342,7 +343,7 @@ describe("HerokuMiaAgent", () => {
 
   describe("Model identification", () => {
     test("should use provided model", () => {
-      const agent = new HerokuMiaAgent({
+      const agent = new HerokuAgent({
         model: "gpt-oss-120b",
       });
 
@@ -350,7 +351,7 @@ describe("HerokuMiaAgent", () => {
     });
 
     test("should fall back to environment model", () => {
-      const agent = new HerokuMiaAgent({});
+      const agent = new HerokuAgent({});
 
       assert.ok(agent);
       // Should use INFERENCE_MODEL_ID from environment
@@ -359,7 +360,7 @@ describe("HerokuMiaAgent", () => {
 
   describe("Retry and timeout configuration", () => {
     test("should accept retry configuration", () => {
-      const agent = new HerokuMiaAgent({
+      const agent = new HerokuAgent({
         maxRetries: 3,
         timeout: 60000,
       });
@@ -368,7 +369,7 @@ describe("HerokuMiaAgent", () => {
     });
 
     test("should use default values when not specified", () => {
-      const agent = new HerokuMiaAgent({});
+      const agent = new HerokuAgent({});
 
       assert.ok(agent);
     });
@@ -376,7 +377,7 @@ describe("HerokuMiaAgent", () => {
 
   describe("Session and metadata", () => {
     test("should accept session configuration", () => {
-      const agent = new HerokuMiaAgent({
+      const agent = new HerokuAgent({
         additionalKwargs: {
           sessionId: "session-123",
           metadata: {
@@ -387,6 +388,13 @@ describe("HerokuMiaAgent", () => {
       });
 
       assert.ok(agent);
+    });
+  });
+describe("createHerokuAgent", () => {
+    test("should return a LangGraph agent", () => {
+      const executor = createHerokuAgent({});
+      assert.ok(executor);
+      assert.strictEqual(typeof executor.invoke, "function");
     });
   });
 });
