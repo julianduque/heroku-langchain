@@ -7,7 +7,7 @@
  *
  * Key features:
  * - **Chat Models**: Access to various LLMs via ChatHeroku class
- * - **Agents**: Intelligent agents with tool execution via HerokuMiaAgent class
+ * - **Agents**: Intelligent agents with tool execution via HerokuAgent class
  * - **Embeddings**: Text embeddings generation via HerokuMiaEmbeddings class
  * - **Function Calling**: Support for structured tools and function calling
  * - **Streaming**: Real-time response streaming for all models
@@ -73,14 +73,15 @@ export type {
 } from "./chat-heroku.js";
 
 /**
- * HerokuMiaAgent - Intelligent agent with tool execution capabilities
+ * HerokuAgent - Intelligent agent with tool execution capabilities
  *
  * Provides access to Heroku's agent API that can execute tools and perform
  * complex multi-step reasoning tasks with Heroku-specific and MCP tools.
  *
- * @see {@link HerokuMiaAgent} for detailed documentation
+ * @see {@link HerokuAgent} for detailed documentation
  */
-export { HerokuMiaAgent } from "./heroku-mia-agent.js";
+export { HerokuAgent } from "./heroku-agent.js";
+export { createHerokuAgent } from "./create-heroku-agent.js";
 
 /**
  * HerokuMiaEmbeddings - Text embeddings for similarity search and RAG
@@ -131,14 +132,14 @@ export type {
   ChatHerokuCallOptions as HerokuMiaCallOptions,
 } from "./types.js";
 
-// Type Definitions for HerokuMiaAgent (Agents)
+// Type Definitions for HerokuAgent (Agents)
 /**
- * Configuration options for creating a HerokuMiaAgent instance.
- * @see {@link HerokuMiaAgentFields}
+ * Configuration options for creating a HerokuAgent instance.
+ * @see {@link HerokuAgentFields}
  */
 export type {
-  HerokuMiaAgentFields,
-  HerokuMiaAgentCallOptions,
+  HerokuAgentFields,
+  HerokuAgentCallOptions,
   HerokuAgentToolDefinition,
   HerokuAgentInvokeRequest,
   HerokuAgentInvokeResponse,

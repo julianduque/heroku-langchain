@@ -10,8 +10,8 @@ import {
 import { ChatResult, ChatGeneration } from "@langchain/core/outputs";
 import { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager";
 import {
-  HerokuMiaAgentFields,
-  HerokuMiaAgentCallOptions,
+  HerokuAgentFields,
+  HerokuAgentCallOptions,
   HerokuAgentStreamRequest,
   // Import Agent SSE event types
   HerokuAgentToolErrorEvent,
@@ -25,7 +25,7 @@ import {
 } from "./common.js";
 
 /**
- * **HerokuMiaAgent** - Heroku Managed Inference Agent Integration
+ * **HerokuAgent** - Heroku Managed Inference Agent Integration
  *
  * A LangChain-compatible chat model that interfaces with Heroku's Managed Inference Agent API.
  * This class provides access to intelligent agents that can execute tools and perform complex
@@ -37,11 +37,11 @@ import {
  *
  * @example
  * ```typescript
- * import { HerokuMiaAgent } from "heroku-langchain";
+ * import { HerokuAgent } from "heroku-langchain";
  * import { HumanMessage } from "@langchain/core/messages";
  *
  * // Basic agent usage
- * const agent = new HerokuMiaAgent({
+ * const agent = new HerokuAgent({
  *   model: "gpt-oss-120b",
  *   temperature: 0.3,
  *   tools: [
@@ -70,7 +70,7 @@ import {
  * @example
  * ```typescript
  * // Agent with MCP tools
- * const agentWithMCP = new HerokuMiaAgent({
+ * const agentWithMCP = new HerokuAgent({
  *   model: "gpt-oss-120b",
  *   tools: [
  *     {
@@ -110,11 +110,11 @@ import {
  * }
  * ```
  *
- * @see {@link HerokuMiaAgentFields} for constructor options
- * @see {@link HerokuMiaAgentCallOptions} for runtime call options
+ * @see {@link HerokuAgentFields} for constructor options
+ * @see {@link HerokuAgentCallOptions} for runtime call options
  * @see [Heroku Agent API Documentation](https://devcenter.heroku.com/articles/heroku-inference-api-v1-agents-heroku)
  */
-export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
+export class HerokuAgent extends BaseChatModel<HerokuAgentCallOptions> {
   protected model: string;
   protected temperature?: number;
   protected maxTokensPerRequest?: number;
@@ -131,14 +131,14 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
 
   /**
    * Returns the LangChain identifier for this agent class.
-   * @returns The string "HerokuMiaAgent"
+   * @returns The string "HerokuAgent"
    */
   static lc_name() {
-    return "HerokuMiaAgent";
+    return "HerokuAgent";
   }
 
   /**
-   * Creates a new HerokuMiaAgent instance.
+   * Creates a new HerokuAgent instance.
    *
    * @param fields - Optional configuration options for the Heroku Mia Agent
    * @throws {Error} When model ID is not provided and INFERENCE_MODEL_ID environment variable is not set
@@ -146,10 +146,10 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
    * @example
    * ```typescript
    * // Basic usage with defaults
-   * const agent = new HerokuMiaAgent();
+   * const agent = new HerokuAgent();
    *
    * // With custom configuration
-   * const agent = new HerokuMiaAgent({
+   * const agent = new HerokuAgent({
    *   model: "gpt-oss-120b",
    *   temperature: 0.3,
    *   maxTokensPerRequest: 2000,
@@ -173,7 +173,7 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
    * });
    * ```
    */
-  constructor(fields?: HerokuMiaAgentFields) {
+  constructor(fields?: HerokuAgentFields) {
     super(fields ?? {});
 
     const modelFromEnv =
@@ -207,10 +207,10 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
 
   /**
    * Returns the LLM type identifier for this agent.
-   * @returns The string "HerokuMiaAgent"
+   * @returns The string "HerokuAgent"
    */
   _llmType(): string {
-    return "HerokuMiaAgent";
+    return "HerokuAgent";
   }
 
   /**
@@ -225,8 +225,8 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
    *
    * @internal
    */
-  invocationParams(options?: Partial<HerokuMiaAgentCallOptions>): Omit<
-    HerokuMiaAgentFields,
+  invocationParams(options?: Partial<HerokuAgentCallOptions>): Omit<
+    HerokuAgentFields,
     keyof BaseChatModelParams
   > & {
     [key: string]: any;
@@ -241,7 +241,7 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
       // ...this.additionalKwargs, // Spread constructor additionalKwargs
     };
 
-    let runtimeParams: Partial<HerokuMiaAgentCallOptions> = {};
+    let runtimeParams: Partial<HerokuAgentCallOptions> = {};
     if (options) {
       // Agent-specific runtime options like metadata or sessionId
       if (options.metadata) runtimeParams.metadata = options.metadata;
@@ -354,7 +354,7 @@ export class HerokuMiaAgent extends BaseChatModel<HerokuMiaAgentCallOptions> {
     const params = this.invocationParams({
       ...options,
       stream: true,
-    } as HerokuMiaAgentCallOptions);
+    } as HerokuAgentCallOptions);
 
     const requestPayload: HerokuAgentStreamRequest = {
       messages: herokuMessages,

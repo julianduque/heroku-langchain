@@ -307,11 +307,11 @@ export interface LocalToolCallChunk {
 // --- Heroku Agent API Specific Types (SPECS.md Section 3) ---
 
 /**
- * Interface for the fields to instantiate HerokuMiaAgent.
+ * Interface for the fields to instantiate HerokuAgent.
  * Extends BaseChatModelParams and includes Heroku-specific agent parameters.
- * Based on SPECS.md Table: HerokuMiaAgentFields Constructor Parameters (Section 3.2.2)
+ * Based on SPECS.md Table: HerokuAgentFields Constructor Parameters (Section 3.2.2)
  */
-export interface HerokuMiaAgentFields extends BaseChatModelParams {
+export interface HerokuAgentFields extends BaseChatModelParams {
   /**
    * The model ID to use for the agent.
    * If not provided, defaults to process.env.INFERENCE_MODEL_ID.
@@ -346,11 +346,11 @@ export interface HerokuMiaAgentFields extends BaseChatModelParams {
 }
 
 /**
- * Interface for the options that can be passed at runtime to HerokuMiaAgent methods.
+ * Interface for the options that can be passed at runtime to HerokuAgent methods.
  * Extends BaseChatModelCallOptions and includes Heroku-specific agent parameters.
- * Based on SPECS.md Table: HerokuMiaAgentCallOptions Constructor Parameters (Section 3.2.2)
+ * Based on SPECS.md Table: HerokuAgentCallOptions Constructor Parameters (Section 3.2.2)
  */
-export interface HerokuMiaAgentCallOptions extends BaseChatModelCallOptions {
+export interface HerokuAgentCallOptions extends BaseChatModelCallOptions {
   // Agent-specific runtime options, e.g. metadata, session_id if supported
   metadata?: Record<string, any>;
   sessionId?: string; // If agent supports sessions
@@ -358,7 +358,7 @@ export interface HerokuMiaAgentCallOptions extends BaseChatModelCallOptions {
 }
 
 /**
- * Defines the structure for tools used by HerokuMiaAgent.
+ * Defines the structure for tools used by HerokuAgent.
  * Based on SPECS.md Section 3.5.1.
  */
 export interface HerokuAgentToolDefinition {

@@ -1,9 +1,9 @@
-import { HerokuMiaAgent } from "../src"; // Adjusted for local example structure
+import { HerokuAgent } from "../src"; // Adjusted for local example structure
 import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgentToolDefinition } from "../src/types"; // Assuming types are exported from ../src/types
 
 async function main() {
-  console.log("🤖 Running HerokuMiaAgent Example...");
+  console.log("🤖 Running HerokuAgent Example...");
 
   const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo"; // Change this to your actual app name
   const tools: HerokuAgentToolDefinition[] = [
@@ -27,7 +27,7 @@ async function main() {
     "   Set HEROKU_APP_NAME environment variable to use a different app.",
   );
 
-  const agentExecutor = new HerokuMiaAgent({
+  const agentExecutor = new HerokuAgent({
     tools: tools,
   });
 
@@ -35,7 +35,7 @@ async function main() {
     console.log("\n🔧 === Heroku Tool Execution ===");
 
     // First interaction - simple streaming
-    console.log("\n🔄 Streaming HerokuMiaAgent...");
+    console.log("\n🔄 Streaming HerokuAgent...");
     const stream = await agentExecutor.stream([
       new HumanMessage(
         "What time is it on the app server? Please use the available tools to check.",

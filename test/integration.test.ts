@@ -2,10 +2,11 @@ import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import {
   ChatHeroku,
-  HerokuMiaAgent,
   HerokuApiError,
   type ChatHerokuFields,
-  type HerokuMiaAgentFields,
+  HerokuAgent,
+  createHerokuAgent,
+  type HerokuAgentFields,
   type HerokuAgentToolDefinition,
 } from "../src/index";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
@@ -45,8 +46,9 @@ describe("Integration tests", () => {
     test("should export all main classes and types", () => {
       // Test that all exports are available
       assert.strictEqual(typeof ChatHeroku, "function");
-      assert.strictEqual(typeof HerokuMiaAgent, "function");
+      assert.strictEqual(typeof HerokuAgent, "function");
       assert.strictEqual(typeof HerokuApiError, "function");
+      assert.strictEqual(typeof createHerokuAgent, "function");
     });
 
     test("should allow type imports", () => {
@@ -56,7 +58,7 @@ describe("Integration tests", () => {
         temperature: 0.7,
       };
 
-      const agentFields: HerokuMiaAgentFields = {
+      const agentFields: HerokuAgentFields = {
         model: "gpt-oss-120b",
         temperature: 0.8,
       };
@@ -144,8 +146,8 @@ describe("Integration tests", () => {
     });
   });
 
-  describe("HerokuMiaAgent workflow", () => {
-    test("should create and configure HerokuMiaAgent instance", () => {
+  describe("HerokuAgent workflow", () => {
+    test("should create and configure HerokuAgent instance", () => {
       const tools: HerokuAgentToolDefinition[] = [
         {
           type: "heroku_tool",
@@ -164,20 +166,20 @@ describe("Integration tests", () => {
         },
       ];
 
-      const config: HerokuMiaAgentFields = {
+      const config: HerokuAgentFields = {
         model: "gpt-oss-120b",
         temperature: 0.8,
         maxTokensPerRequest: 2000,
         tools,
       };
 
-      const agent = new HerokuMiaAgent(config);
+      const agent = new HerokuAgent(config);
       assert.ok(agent);
-      assert.strictEqual(agent._llmType(), "HerokuMiaAgent");
+      assert.strictEqual(agent._llmType(), "HerokuAgent");
     });
 
     test("should handle agent conversations", () => {
-      const _agent = new HerokuMiaAgent({});
+      const _agent = new HerokuAgent({});
 
       const messages = [
         new SystemMessage(
@@ -224,7 +226,7 @@ describe("Integration tests", () => {
       ];
 
       assert.doesNotThrow(() => {
-        const agent = new HerokuMiaAgent({
+        const agent = new HerokuAgent({
           tools: complexTools,
           additionalKwargs: {
             sessionId: "deploy-session-123",
@@ -273,7 +275,7 @@ describe("Integration tests", () => {
       assert.ok(chatModel);
 
       // Pattern 2: Agent with Heroku tools
-      const agentConfig: HerokuMiaAgentFields = {
+      const agentConfig: HerokuAgentFields = {
         model: "gpt-oss-120b",
         temperature: 0.8,
         tools: [
@@ -286,7 +288,7 @@ describe("Integration tests", () => {
           },
         ],
       };
-      const agent = new HerokuMiaAgent(agentConfig);
+      const agent = new HerokuAgent(agentConfig);
       assert.ok(agent);
 
       // Pattern 3: Custom API endpoints
@@ -311,7 +313,7 @@ describe("Integration tests", () => {
           maxTokens: 1000, // Valid: positive integer
         };
 
-        const validAgentConfig: HerokuMiaAgentFields = {
+        const validAgentConfig: HerokuAgentFields = {
           maxTokensPerRequest: 2000,
           tools: [
             {
