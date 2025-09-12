@@ -22,7 +22,7 @@ const common_1 = require("./common");
  *
  * // Basic agent usage
  * const agent = new HerokuMiaAgent({
- *   model: "claude-3-7-sonnet",
+ *   model: "gpt-oss-120b",
  *   temperature: 0.3,
  *   tools: [
  *     {
@@ -51,7 +51,7 @@ const common_1 = require("./common");
  * ```typescript
  * // Agent with MCP tools
  * const agentWithMCP = new HerokuMiaAgent({
- *   model: "claude-3-7-sonnet",
+ *   model: "gpt-oss-120b",
  *   tools: [
  *     {
  *       type: "mcp",
@@ -128,7 +128,7 @@ class HerokuMiaAgent extends chat_models_1.BaseChatModel {
      *
      * // With custom configuration
      * const agent = new HerokuMiaAgent({
-     *   model: "claude-3-7-sonnet",
+     *   model: "gpt-oss-120b",
      *   temperature: 0.3,
      *   maxTokensPerRequest: 2000,
      *   tools: [

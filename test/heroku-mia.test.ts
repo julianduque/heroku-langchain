@@ -38,7 +38,7 @@ describe("HerokuMia", () => {
 
     test("should create instance with provided configuration", () => {
       const herokuMia = new HerokuMia({
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
         temperature: 0.7,
         maxTokens: 1000,
         apiKey: "custom-key",
@@ -90,7 +90,7 @@ describe("HerokuMia", () => {
     });
 
     test("should prioritize constructor parameters over environment variables", () => {
-      const customModel = "custom-claude-model";
+      const customModel = "custom-gpt-model";
       const herokuMia = new HerokuMia({ model: customModel });
 
       // We can't directly access the model property, but we can check that it doesn't throw
@@ -300,7 +300,7 @@ describe("HerokuMia", () => {
   describe("Model identification", () => {
     test("should use provided model", () => {
       const herokuMia = new HerokuMia({
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
       });
 
       assert.ok(herokuMia);

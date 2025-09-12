@@ -8,7 +8,7 @@ This document provides the technical specifications for the @langchain/heroku li
 
 The primary objective of the @langchain/heroku library is to offer LangChainJS developers a streamlined and idiomatic way to access Heroku's artificial intelligence capabilities. These capabilities include leveraging Large Language Models (LLMs) through the Heroku Managed Inference API and interacting with tool-using agents via the Heroku Managed Agents API.1
 
-This library will abstract the underlying Heroku API interactions, presenting them through familiar LangChain paradigms such as the Runnable interface and the BaseChatModel class. This approach ensures that developers can readily incorporate Heroku's AI services into their existing LangChain applications and complex workflows, including those built with LangChain Expression Language (LCEL) and LangGraph. By bridging the LangChain framework with Heroku's managed AI infrastructure, the library aims to lower the adoption threshold for LangChain developers seeking to utilize Heroku's AI offerings. The availability of Heroku's inference services, including models like Claude, Cohere, and Stable-Image-Ultra 1, combined with LangChain's development strengths, creates a powerful synergy.
+This library will abstract the underlying Heroku API interactions, presenting them through familiar LangChain paradigms such as the Runnable interface and the BaseChatModel class. This approach ensures that developers can readily incorporate Heroku's AI services into their existing LangChain applications and complex workflows, including those built with LangChain Expression Language (LCEL) and LangGraph. By bridging the LangChain framework with Heroku's managed AI infrastructure, the library aims to lower the adoption threshold for LangChain developers seeking to utilize Heroku's AI offerings. The availability of Heroku's inference services, including models like gpt-oss-120b, Cohere, and Stable-Image-Ultra 1, combined with LangChain's development strengths, creates a powerful synergy.
 
 ### **1.2. Core Features**
 
@@ -16,7 +16,7 @@ The library will deliver two main sets of features, corresponding to the distinc
 
 #### **1.2.1. Heroku Managed Inference (/v1/chat/completions) Integration**
 
-A core component will be the HerokuMia class, designed to be analogous to the @langchain/openai library's ChatOpenAI class. This class will enable interaction with LLMs such as Claude 3.7 Sonnet hosted on Heroku's Managed Inference platform.2 It will support standard chat model operations, including single invocations (invoke), streaming responses (stream), and batch processing (batch). A key feature will be the support for Heroku's function type tools, which allow the LLM to request the execution of functions defined and managed on the client-side.3
+A core component will be the HerokuMia class, designed to be analogous to the @langchain/openai library's ChatOpenAI class. This class will enable interaction with LLMs such as gpt-oss-120b hosted on Heroku's Managed Inference platform.2 It will support standard chat model operations, including single invocations (invoke), streaming responses (stream), and batch processing (batch). A key feature will be the support for Heroku's function type tools, which allow the LLM to request the execution of functions defined and managed on the client-side.3
 
 #### **1.2.2. Heroku Managed Agents (/v1/agents/heroku) Integration**
 
@@ -58,7 +58,7 @@ import { HumanMessage } from "@langchain/core/messages";
 const llm = new HerokuMia({
   // apiKey: "your\_inference\_key", // Can be set via env HEROKU\_API\_KEY
   // apiUrl: "your\_inference\_url", // Can be set via env HEROKU\_API\_URL
-  model: "claude-3-7-sonnet", // Model ID as per Heroku documentation \[3\]
+  model: "gpt-oss-120b", // Model ID as per Heroku documentation \[3\]
   temperature: 0.5, // Controls randomness \[3\]
   maxTokens: 1024, // Max tokens for generation, maps to 'max\_tokens' \[3\]
 });
@@ -93,7 +93,7 @@ The constructor for HerokuMia will accept an optional fields object of type Hero
 
 | Parameter        | Type                  | Description                                                                                           | Heroku API Equivalent | Default Value                        | Required | Notes                                                                                                                      |
 | :--------------- | :-------------------- | :---------------------------------------------------------------------------------------------------- | :-------------------- | :----------------------------------- | :------- | :------------------------------------------------------------------------------------------------------------------------- |
-| model            | string                | The model ID to use for completion (e.g., "claude-3-7-sonnet").                                       | model                 | (None, must be provided)             | Yes      | As specified in Heroku API documentation.3                                                                                 |
+| model            | string                | The model ID to use for completion (e.g., "gpt-oss-120b").                                       | model                 | (None, must be provided)             | Yes      | As specified in Heroku API documentation.3                                                                                 |
 | temperature      | number (0.0 to 1.0)   | Controls randomness. Lower values make responses more focused.                                        | temperature           | 1.0 3                                | No       | Parameter from Heroku API.3                                                                                                |
 | maxTokens        | number                | Maximum tokens the model may generate.                                                                | max_tokens            | Varies by model 3                    | No       | Maps to max_tokens in Heroku API.3 LangChain commonly uses maxTokens.                                                      |
 | stop             | string                | List of strings that stop generation.                                                                 | stop                  | null 3                               | No       | Parameter from Heroku API.3                                                                                                |
@@ -147,7 +147,7 @@ This method, required by BaseChatModel 9, returns a string identifier for the la
 
 ##### **2.3.6. Other relevant BaseChatModel methods**
 
-- getNumTokens(text: string): Promise\<number\>: This method could potentially be implemented if Heroku provides a dedicated token counting mechanism or if a client-side tokenizer compatible with the Heroku models (e.g., for Claude) is available and integrated. Alternatively, it might rely on the usage data returned in API responses or provide a rough estimation.
+- getNumTokens(text: string): Promise\<number\>: This method could potentially be implemented if Heroku provides a dedicated token counting mechanism or if a client-side tokenizer compatible with the Heroku models (e.g., for gpt-oss-120b) is available and integrated. Alternatively, it might rely on the usage data returned in API responses or provide a rough estimation.
 - invocationParams(options?: Partial\<HerokuMiaCallOptions\>): any: As defined in BaseChatModel 9, this method should return the parameters that will be used to invoke the model. This is valuable for logging, debugging, and ensuring transparency in model calls.
 
 ### **2.4. API Integration: /v1/chat/completions** 3
@@ -226,7 +226,7 @@ import { HumanMessage } from "@langchain/core/messages";
 const agentExecutor \= new HerokuMiaAgent({
     // apiKey: "your\_inference\_key",
     // apiUrl: "your\_inference\_url",
-    model: "claude-3-7-sonnet", // Or other agent-compatible model
+    model: "gpt-oss-120b", // Or other agent-compatible model
     tools:  [
       {
         type: "heroku_tool",
