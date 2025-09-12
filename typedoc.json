@@ -1,14 +1,14 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["src/index.ts"],
-  "out": "docs/api",
+  "out": "docs",
   "theme": "default",
   "includeVersion": true,
   "excludePrivate": false,
   "excludeProtected": false,
   "excludeExternals": true,
   "readme": "README.md",
-  "name": "Heroku LangChain",
+  "name": "Heroku LangChain.js",
   "disableSources": false,
   "sourceLinkTemplate": "https://github.com/julianduque/heroku-langchain/blob/{gitRevision}/{path}#L{line}",
   "navigationLinks": {
