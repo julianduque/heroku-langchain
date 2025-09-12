@@ -1,4 +1,4 @@
-import { HerokuMia } from "../src"; // Adjusted for local example structure
+import { ChatHeroku } from "../src"; // Adjusted for local example structure
 import { HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 import { DynamicTool } from "@langchain/core/tools";
 import { RunnableLambda } from "@langchain/core/runnables";
@@ -59,9 +59,9 @@ const weatherTool = new DynamicTool({
 });
 
 async function main() {
-  console.log("🛠️ Running HerokuMia Chat with Custom Tool Example...");
+  console.log("🛠️ Running ChatHeroku Chat with Custom Tool Example...");
 
-  const llm = new HerokuMia({
+  const llm = new ChatHeroku({
     // model: "gpt-oss-120b", // Choose a model good at tool use
     temperature: 0.2,
   });

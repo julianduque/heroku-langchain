@@ -1,8 +1,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
 import type {
-  HerokuMiaFields,
-  HerokuMiaCallOptions,
+  ChatHerokuFields,
+  ChatHerokuCallOptions,
   HerokuChatMessageRole,
   HerokuToolCall,
   HerokuChatMessage,
@@ -13,9 +13,9 @@ import type {
 } from "../src/types";
 
 describe("Type definitions", () => {
-  describe("HerokuMiaFields", () => {
+  describe("ChatHerokuFields", () => {
     test("should accept valid configuration", () => {
-      const fields: HerokuMiaFields = {
+      const fields: ChatHerokuFields = {
         model: "gpt-oss-120b",
         temperature: 0.7,
         maxTokens: 1000,
@@ -37,16 +37,16 @@ describe("Type definitions", () => {
     });
 
     test("should work with minimal configuration", () => {
-      const fields: HerokuMiaFields = {};
+      const fields: ChatHerokuFields = {};
 
       assert.ok(fields);
       assert.strictEqual(Object.keys(fields).length, 0);
     });
   });
 
-  describe("HerokuMiaCallOptions", () => {
+  describe("ChatHerokuCallOptions", () => {
     test("should accept valid call options", () => {
-      const options: HerokuMiaCallOptions = {
+      const options: ChatHerokuCallOptions = {
         tool_choice: "auto",
         temperature: 0.5,
         maxTokens: 500,
@@ -59,7 +59,7 @@ describe("Type definitions", () => {
     });
 
     test("should accept specific tool choice", () => {
-      const options: HerokuMiaCallOptions = {
+      const options: ChatHerokuCallOptions = {
         tool_choice: {
           type: "function",
           function: { name: "specific_tool" },

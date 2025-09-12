@@ -1,17 +1,17 @@
-import { HerokuMia } from "../src"; // Adjusted for local example structure
+import { ChatHeroku } from "../src"; // Adjusted for local example structure
 import { HumanMessage } from "@langchain/core/messages";
 
 async function main() {
-  console.log("💬 HerokuMia Chat Example");
+  console.log("💬 ChatHeroku Chat Example");
   console.log("=========================\n");
 
-  const llm = new HerokuMia({
+  const llm = new ChatHeroku({
     temperature: 0.5,
     maxTokens: 1024,
   });
 
   try {
-    console.log("🤖 Invoking HerokuMia...");
+    console.log("🤖 Invoking ChatHeroku...");
     const response = await llm.invoke([
       new HumanMessage("Hello Mia, tell me about Heroku Inference."),
     ]);
@@ -21,7 +21,7 @@ async function main() {
   }
 
   try {
-    console.log("\n🔄 Streaming HerokuMia...");
+    console.log("\n🔄 Streaming ChatHeroku...");
     const stream = await llm.stream([
       new HumanMessage("Explain streaming in 50 words."),
     ]);

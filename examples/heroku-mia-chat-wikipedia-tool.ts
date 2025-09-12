@@ -3,7 +3,7 @@ import { HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 import { StructuredTool } from "@langchain/core/tools";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
 import { RunnableLambda } from "@langchain/core/runnables";
-import { HerokuMia } from "../src";
+import { ChatHeroku } from "../src";
 
 // Custom Wikipedia tool that properly handles config propagation
 class WikipediaSearchTool extends StructuredTool {
@@ -41,14 +41,14 @@ class WikipediaSearchTool extends StructuredTool {
 
 async function main() {
   console.log(
-    "🔧 Running HerokuMia Chat with official WikipediaQueryRun Tool Example...",
+    "🔧 Running ChatHeroku Chat with official WikipediaQueryRun Tool Example...",
   );
 
   // Create the custom Wikipedia tool
   const wikipediaTool = new WikipediaSearchTool();
 
-  // 3. Instantiate HerokuMia and bind tools
-  const llm = new HerokuMia({
+  // 3. Instantiate ChatHeroku and bind tools
+  const llm = new ChatHeroku({
     temperature: 0.1,
   });
 
@@ -66,7 +66,7 @@ async function main() {
 
       console.log(`💭 Initial Human Message: "${chatHistory[0].content}"`);
 
-      // 4. Initial call to HerokuMia with bound tools
+      // 4. Initial call to ChatHeroku with bound tools
       let response = await llmWithTools.invoke(chatHistory, config);
       console.log("\n🤖 --- First LLM Response ---");
       console.log("Content:", response.content);
@@ -152,7 +152,7 @@ async function main() {
     console.log("Final Response:", result.finalResponse);
   } catch (error) {
     console.error(
-      "\n❌ Error during HerokuMia chat with WikipediaTool execution:",
+      "\n❌ Error during ChatHeroku chat with WikipediaTool execution:",
       error,
     );
   }

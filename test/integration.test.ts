@@ -1,10 +1,10 @@
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import {
-  HerokuMia,
+  ChatHeroku,
   HerokuMiaAgent,
   HerokuApiError,
-  type HerokuMiaFields,
+  type ChatHerokuFields,
   type HerokuMiaAgentFields,
   type HerokuAgentToolDefinition,
 } from "../src/index";
@@ -44,14 +44,14 @@ describe("Integration tests", () => {
   describe("Exported components", () => {
     test("should export all main classes and types", () => {
       // Test that all exports are available
-      assert.strictEqual(typeof HerokuMia, "function");
+      assert.strictEqual(typeof ChatHeroku, "function");
       assert.strictEqual(typeof HerokuMiaAgent, "function");
       assert.strictEqual(typeof HerokuApiError, "function");
     });
 
     test("should allow type imports", () => {
       // Type tests - these should compile without errors
-      const miaFields: HerokuMiaFields = {
+      const miaFields: ChatHerokuFields = {
         model: "gpt-oss-120b",
         temperature: 0.7,
       };
@@ -73,22 +73,22 @@ describe("Integration tests", () => {
     });
   });
 
-  describe("HerokuMia workflow", () => {
-    test("should create and configure HerokuMia instance", () => {
-      const config: HerokuMiaFields = {
+  describe("ChatHeroku workflow", () => {
+    test("should create and configure ChatHeroku instance", () => {
+      const config: ChatHerokuFields = {
         model: "gpt-oss-120b",
         temperature: 0.7,
         maxTokens: 1000,
         topP: 0.9,
       };
 
-      const herokuMia = new HerokuMia(config);
+      const herokuMia = new ChatHeroku(config);
       assert.ok(herokuMia);
-      assert.strictEqual(herokuMia._llmType(), "HerokuMia");
+      assert.strictEqual(herokuMia._llmType(), "ChatHeroku");
     });
 
     test("should handle message preparation", () => {
-      const _herokuMia = new HerokuMia({});
+      const _herokuMia = new ChatHeroku({});
 
       const messages = [
         new SystemMessage("You are a helpful assistant."),
@@ -119,15 +119,15 @@ describe("Integration tests", () => {
         }
       }
 
-      const herokuMia = new HerokuMia({});
+      const herokuMia = new ChatHeroku({});
       const boundMia = herokuMia.bindTools([new WeatherTool()]);
 
       assert.ok(boundMia);
-      assert(boundMia instanceof HerokuMia);
+      assert(boundMia instanceof ChatHeroku);
     });
 
     test("should accept call options", () => {
-      const herokuMia = new HerokuMia({});
+      const herokuMia = new ChatHeroku({});
 
       const callOptions = {
         temperature: 0.5,
@@ -244,7 +244,7 @@ describe("Integration tests", () => {
       // Remove required environment variables
       delete process.env.INFERENCE_MODEL_ID;
 
-      assert.throws(() => new HerokuMia({}), /Heroku model ID not found/);
+      assert.throws(() => new ChatHeroku({}), /Heroku model ID not found/);
     });
 
     test("should create and handle HerokuApiError instances", () => {
@@ -264,12 +264,12 @@ describe("Integration tests", () => {
   describe("Configuration patterns", () => {
     test("should support common configuration patterns", () => {
       // Pattern 1: Basic chat completion
-      const chatConfig: HerokuMiaFields = {
+      const chatConfig: ChatHerokuFields = {
         model: "gpt-oss-120b",
         temperature: 0.7,
         maxTokens: 1000,
       };
-      const chatModel = new HerokuMia(chatConfig);
+      const chatModel = new ChatHeroku(chatConfig);
       assert.ok(chatModel);
 
       // Pattern 2: Agent with Heroku tools
@@ -290,13 +290,13 @@ describe("Integration tests", () => {
       assert.ok(agent);
 
       // Pattern 3: Custom API endpoints
-      const customConfig: HerokuMiaFields = {
+      const customConfig: ChatHerokuFields = {
         apiKey: "custom-key",
         apiUrl: "https://custom-inference.example.com",
         maxRetries: 5,
         timeout: 30000,
       };
-      const customModel = new HerokuMia(customConfig);
+      const customModel = new ChatHeroku(customConfig);
       assert.ok(customModel);
     });
   });
@@ -305,7 +305,7 @@ describe("Integration tests", () => {
     test("should enforce type constraints", () => {
       // Test that TypeScript types are properly enforced
       assert.doesNotThrow(() => {
-        const validMiaConfig: HerokuMiaFields = {
+        const validMiaConfig: ChatHerokuFields = {
           temperature: 0.5, // Valid: 0-1 range
           topP: 0.9, // Valid: 0-1 range
           maxTokens: 1000, // Valid: positive integer

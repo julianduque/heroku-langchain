@@ -1,4 +1,4 @@
-import { HerokuMia } from "../src";
+import { ChatHeroku } from "../src";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import {
@@ -7,9 +7,9 @@ import {
 } from "@langchain/core/runnables";
 
 async function main() {
-  console.log("⛓️ Running HerokuMia RunnableSequence Chaining Example...");
+  console.log("⛓️ Running ChatHeroku RunnableSequence Chaining Example...");
 
-  const llm = new HerokuMia({
+  const llm = new ChatHeroku({
     temperature: 0.7,
     maxTokens: 150,
   });
@@ -74,7 +74,7 @@ async function main() {
     console.log(finalResult);
   } catch (error) {
     console.error(
-      "❌ Error during HerokuMia RunnableSequence chain execution:",
+      "❌ Error during ChatHeroku RunnableSequence chain execution:",
       error,
     );
     if (

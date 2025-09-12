@@ -6,10 +6,10 @@ import { StructuredTool } from "@langchain/core/tools";
 import type { RunnableConfig } from "@langchain/core/runnables";
 
 /**
- * Interface for the fields to instantiate HerokuMia.
+ * Interface for the fields to instantiate ChatHeroku.
  * Extends BaseChatModelParams and includes Heroku-specific parameters.
  */
-export interface HerokuMiaFields extends BaseChatModelParams {
+export interface ChatHerokuFields extends BaseChatModelParams {
   /**
    * The model ID to use for completion (e.g., "gpt-oss-120b").
    * As specified in Heroku API documentation.
@@ -96,10 +96,10 @@ export interface HerokuMiaFields extends BaseChatModelParams {
 }
 
 /**
- * Interface for the options that can be passed at runtime to HerokuMia methods.
+ * Interface for the options that can be passed at runtime to ChatHeroku methods.
  * Extends BaseChatModelCallOptions and includes Heroku-specific tool parameters.
  */
-export interface HerokuMiaCallOptions extends BaseChatModelCallOptions {
+export interface ChatHerokuCallOptions extends BaseChatModelCallOptions {
   /**
    * A list of tools the model may call.
    * LangChain StructuredTool definitions are converted to Heroku's function tool format.
@@ -125,7 +125,7 @@ export interface HerokuMiaCallOptions extends BaseChatModelCallOptions {
   additionalKwargs?: Record<string, any>;
 
   // Overrides for constructor parameters, if allowed by BaseChatModelCallOptions
-  // and make sense for HerokuMia.
+  // and make sense for ChatHeroku.
   temperature?: number;
   maxTokens?: number;
   topP?: number;
@@ -161,7 +161,7 @@ export interface HerokuToolMessageContent {
 
 /**
  * Structure for a message in the Heroku API request/response.
- * Source: SPECS.md Table HerokuMia Request Mapping & Heroku /v1/chat/completions doc (messages array)
+ * Source: SPECS.md Table ChatHeroku Request Mapping & Heroku /v1/chat/completions doc (messages array)
  */
 export interface HerokuChatMessage {
   role: HerokuChatMessageRole;
@@ -196,7 +196,7 @@ export interface HerokuFunctionTool {
 
 /**
  * Request payload for Heroku /v1/chat/completions API.
- * Source: SPECS.md Table HerokuMia Request Mapping & Heroku /v1/chat/completions doc
+ * Source: SPECS.md Table ChatHeroku Request Mapping & Heroku /v1/chat/completions doc
  */
 export interface HerokuChatCompletionRequest {
   model: string;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HerokuMia } from "../src"; // Adjusted for local example structure
+import { ChatHeroku } from "../src"; // Adjusted for local example structure
 import { HumanMessage } from "@langchain/core/messages";
 
 // Define the Zod schema for the desired structured output
@@ -13,9 +13,9 @@ const JokeSchema = z.object({
 });
 
 async function main() {
-  console.log("🎯 Running HerokuMia Chat with Structured Output Example...");
+  console.log("🎯 Running ChatHeroku Chat with Structured Output Example...");
 
-  const llm = new HerokuMia({
+  const llm = new ChatHeroku({
     temperature: 0.7,
   });
 
