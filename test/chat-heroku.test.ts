@@ -37,7 +37,6 @@ describe("ChatHeroku", () => {
     });
 
     test("should create instance with provided configuration", () => {
-
       const herokuMia = new ChatHeroku({
         model: "gpt-oss-120b",
         temperature: 0.7,
