@@ -38,7 +38,7 @@ describe("HerokuMiaAgent", () => {
 
     test("should create instance with provided configuration", () => {
       const agent = new HerokuMiaAgent({
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
         temperature: 0.7,
         maxTokensPerRequest: 1000,
         apiKey: "custom-key",
@@ -108,7 +108,7 @@ describe("HerokuMiaAgent", () => {
     });
 
     test("should prioritize constructor parameters over environment variables", () => {
-      const customModel = "custom-claude-agent";
+      const customModel = "custom-gpt-agent";
       const agent = new HerokuMiaAgent({ model: customModel });
 
       assert.ok(agent);
@@ -304,7 +304,7 @@ describe("HerokuMiaAgent", () => {
 
     test("should handle streaming responses (mock)", () => {
       const _agent = new HerokuMiaAgent({
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
         temperature: 0.7,
       });
       const _messages = [new HumanMessage("Test streaming")];
@@ -315,7 +315,7 @@ describe("HerokuMiaAgent", () => {
 
     test("should handle non-streaming responses (mock)", () => {
       const _agent = new HerokuMiaAgent({
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
         temperature: 0.7,
       });
       const _messages = [new HumanMessage("Test non-streaming")];
@@ -343,7 +343,7 @@ describe("HerokuMiaAgent", () => {
   describe("Model identification", () => {
     test("should use provided model", () => {
       const agent = new HerokuMiaAgent({
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
       });
 
       assert.ok(agent);

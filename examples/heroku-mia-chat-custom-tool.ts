@@ -62,7 +62,7 @@ async function main() {
   console.log("🛠️ Running HerokuMia Chat with Custom Tool Example...");
 
   const llm = new HerokuMia({
-    // model: "claude-3-opus-20240229", // Choose a model good at tool use
+    // model: "gpt-oss-120b", // Choose a model good at tool use
     temperature: 0.2,
   });
 

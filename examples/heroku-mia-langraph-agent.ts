@@ -17,7 +17,7 @@ const tools: HerokuAgentToolDefinition[] = [
 ];
 
 const agent = new HerokuMiaAgent({
-  model: "claude-3-7-sonnet",
+  model: "gpt-oss-120b",
   tools,
 });
 

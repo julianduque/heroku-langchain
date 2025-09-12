@@ -21,7 +21,7 @@ const common_1 = require("./common");
  *
  * // Basic usage
  * const model = new HerokuMia({
- *   model: "claude-3-7-sonnet",
+ *   model: "gpt-oss-120b",
  *   temperature: 0.7,
  *   apiKey: process.env.INFERENCE_KEY,
  *   apiUrl: process.env.INFERENCE_URL
@@ -119,7 +119,7 @@ class HerokuMia extends chat_models_1.BaseChatModel {
      *
      * // With custom configuration
      * const model = new HerokuMia({
-     *   model: "claude-3-7-sonnet",
+     *   model: "gpt-oss-120b",
      *   temperature: 0.7,
      *   maxTokens: 1000,
      *   apiKey: "your-api-key",

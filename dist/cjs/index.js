@@ -21,7 +21,7 @@
  *
  * // Chat completion
  * const model = new HerokuMia({
- *   model: "claude-3-7-sonnet",
+ *   model: "gpt-oss-120b",
  *   apiKey: process.env.INFERENCE_KEY
  * });
  *

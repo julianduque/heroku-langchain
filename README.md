@@ -30,7 +30,7 @@ async function main() {
   // Ensure INFERENCE_MODEL_ID and INFERENCE_KEY are set in your environment
   // or pass them directly to the constructor:
   // const chat = new HerokuMia({ model: "your-model-id", apiKey: "your-api-key" });
-  const chat = new HerokuMia({ model: "claude-3-7-sonnet" });
+  const chat = new HerokuMia({ model: "gpt-oss-120b" });
 
   const messages = [new HumanMessage("Hello, how are you doing today?")];
 
@@ -320,7 +320,7 @@ To run the examples:
 
 ```bash
 # Set required environment variables for chat/agents
-export INFERENCE_MODEL_ID="claude-3-7-sonnet"
+export INFERENCE_MODEL_ID="gpt-oss-120b"
 export INFERENCE_KEY="your-heroku-api-key"
 export HEROKU_APP_NAME="your-app-name"  # Optional, defaults to "mia-inference-demo"
 

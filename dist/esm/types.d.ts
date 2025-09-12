@@ -7,7 +7,7 @@ import type { RunnableConfig } from "@langchain/core/runnables";
  */
 export interface HerokuMiaFields extends BaseChatModelParams {
     /**
-     * The model ID to use for completion (e.g., "claude-3-7-sonnet").
+     * The model ID to use for completion (e.g., "gpt-oss-120b").
      * As specified in Heroku API documentation.
      * If not provided, defaults to process.env.INFERENCE_MODEL_ID.
      */

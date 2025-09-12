@@ -16,7 +16,7 @@ describe("Type definitions", () => {
   describe("HerokuMiaFields", () => {
     test("should accept valid configuration", () => {
       const fields: HerokuMiaFields = {
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
         temperature: 0.7,
         maxTokens: 1000,
         stop: ["STOP"],
@@ -32,7 +32,7 @@ describe("Type definitions", () => {
 
       // Type assertion - if this compiles, the type is valid
       assert.ok(fields);
-      assert.strictEqual(fields.model, "claude-3-7-sonnet");
+      assert.strictEqual(fields.model, "gpt-oss-120b");
       assert.strictEqual(fields.temperature, 0.7);
     });
 
@@ -180,7 +180,7 @@ describe("Type definitions", () => {
       // This test ensures the type compiles correctly with minimal required fields
       // The actual implementation would need to match the interface
       const request = {
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
         messages: [
           {
             role: "user" as HerokuChatMessageRole,
@@ -192,7 +192,7 @@ describe("Type definitions", () => {
       // Type assertion to verify it matches the interface structure
       const typedRequest: Partial<HerokuChatCompletionRequest> = request;
       assert.ok(typedRequest);
-      assert.strictEqual(typedRequest.model, "claude-3-7-sonnet");
+      assert.strictEqual(typedRequest.model, "gpt-oss-120b");
     });
   });
 
@@ -200,7 +200,7 @@ describe("Type definitions", () => {
     test("should accept agent configuration", () => {
       // Test that agent-specific fields are properly typed
       const fields: Partial<HerokuMiaAgentFields> = {
-        model: "claude-3-7-sonnet",
+        model: "gpt-oss-120b",
         temperature: 0.7,
         apiKey: "test-key",
         apiUrl: "https://test.url",
@@ -210,7 +210,7 @@ describe("Type definitions", () => {
       };
 
       assert.ok(fields);
-      assert.strictEqual(fields.model, "claude-3-7-sonnet");
+      assert.strictEqual(fields.model, "gpt-oss-120b");
     });
   });
 
