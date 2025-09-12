@@ -61,12 +61,12 @@
   },
   "dependencies": {
     "@langchain/core": "^0.3.58",
+    "@langchain/langgraph": "^0.3.3",
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
     "@langchain/community": "^0.3.46",
-    "@langchain/langgraph": "^0.3.3",
     "@langchain/mcp-adapters": "^0.5.2",
     "@modelcontextprotocol/sdk": "^1.12.3",
     "@types/node": "^22.15.32",
