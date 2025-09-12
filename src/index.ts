@@ -58,6 +58,11 @@
 export { ChatHeroku } from "./chat-heroku.js";
 
 /**
+ * @deprecated Use ChatHeroku instead.
+ */
+export { ChatHeroku as HerokuMia } from "./chat-heroku.js";
+
+/**
  * Configuration options and parameter types for structured output functionality.
  * @see {@link StructuredOutputMethodOptions}
  * @see {@link StructuredOutputMethodParams}
@@ -116,6 +121,14 @@ export type {
   HerokuChatCompletionStreamChoice,
   HerokuChatCompletionStreamResponse,
   LocalToolCallChunk, // If this is intended to be part of the public API for consumers handling streams
+} from "./types.js";
+
+/**
+ * @deprecated Use ChatHerokuFields and ChatHerokuCallOptions instead.
+ */
+export type {
+  ChatHerokuFields as HerokuMiaFields,
+  ChatHerokuCallOptions as HerokuMiaCallOptions,
 } from "./types.js";
 
 // Type Definitions for HerokuMiaAgent (Agents)
