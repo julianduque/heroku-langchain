@@ -111,6 +111,7 @@ async function main() {
         }
 
         console.log("\n🔄 LLM call after tool execution...");
+        console.log(messages);
         // Continue conversation with tool results
         aiResponse = await llmWithTools.invoke(messages, config);
         messages.push(aiResponse as AIMessage);

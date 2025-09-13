@@ -485,10 +485,10 @@ export type HerokuAgentSSEData =
 // --- Heroku Embeddings API Specific Types ---
 
 /**
- * Interface for the fields to instantiate HerokuMiaEmbeddings.
+ * Interface for the fields to instantiate HerokuEmbeddings.
  * Extends standard embedding parameters and includes Heroku-specific configuration.
  */
-export interface HerokuMiaEmbeddingsFields {
+export interface HerokuEmbeddingsFields {
   /**
    * The model ID to use for embeddings (e.g., "cohere-embed-multilingual").
    * As specified in Heroku embeddings API documentation.
@@ -532,10 +532,10 @@ export interface HerokuMiaEmbeddingsFields {
 }
 
 /**
- * Interface for call-time options when using HerokuMiaEmbeddings.
+ * Interface for call-time options when using HerokuEmbeddings.
  * These options can be passed to embedDocuments() and embedQuery() methods.
  */
-export interface HerokuMiaEmbeddingsCallOptions extends RunnableConfig {
+export interface HerokuEmbeddingsCallOptions extends RunnableConfig {
   /**
    * Type of input text for embedding optimization.
    * - "search_document": For storing documents in a search index

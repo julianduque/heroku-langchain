@@ -390,7 +390,7 @@ describe("HerokuAgent", () => {
       assert.ok(agent);
     });
   });
-describe("createHerokuAgent", () => {
+  describe("createHerokuAgent", () => {
     test("should return a LangGraph agent", () => {
       const executor = createHerokuAgent({});
       assert.ok(executor);

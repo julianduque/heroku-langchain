@@ -8,14 +8,14 @@
  * Key features:
  * - **Chat Models**: Access to various LLMs via ChatHeroku class
  * - **Agents**: Intelligent agents with tool execution via HerokuAgent class
- * - **Embeddings**: Text embeddings generation via HerokuMiaEmbeddings class
+ * - **Embeddings**: Text embeddings generation via HerokuEmbeddings class
  * - **Function Calling**: Support for structured tools and function calling
  * - **Streaming**: Real-time response streaming for all models
  * - **Error Handling**: Robust error handling with retry logic
  *
  * @example Basic Usage
  * ```typescript
- * import { ChatHeroku, HerokuMiaEmbeddings } from "heroku-langchain";
+ * import { ChatHeroku, HerokuEmbeddings } from "heroku-langchain";
  * import { HumanMessage } from "@langchain/core/messages";
  *
  * // Chat completion
@@ -29,7 +29,7 @@
  * ]);
  *
  * // Text embeddings
- * const embeddings = new HerokuMiaEmbeddings({
+ * const embeddings = new HerokuEmbeddings({
  *   model: "cohere-embed-multilingual",
  *   apiKey: process.env.EMBEDDING_KEY
  * });
@@ -55,12 +55,12 @@
  *
  * @see {@link ChatHeroku} for detailed documentation
  */
-export { ChatHeroku } from "./chat-heroku.js";
+export { ChatHeroku } from "./chat.js";
 
 /**
  * @deprecated Use ChatHeroku instead.
  */
-export { ChatHeroku as HerokuMia } from "./chat-heroku.js";
+export { ChatHeroku as HerokuMia } from "./chat.js";
 
 /**
  * Configuration options and parameter types for structured output functionality.
@@ -70,7 +70,7 @@ export { ChatHeroku as HerokuMia } from "./chat-heroku.js";
 export type {
   StructuredOutputMethodOptions,
   StructuredOutputMethodParams,
-} from "./chat-heroku.js";
+} from "./chat.js";
 
 /**
  * HerokuAgent - Intelligent agent with tool execution capabilities
@@ -84,14 +84,19 @@ export { HerokuAgent } from "./heroku-agent.js";
 export { createHerokuAgent } from "./create-heroku-agent.js";
 
 /**
- * HerokuMiaEmbeddings - Text embeddings for similarity search and RAG
+ * @deprecated Use HerokuAgent instead.
+ */
+export { HerokuAgent as HerokuMiaAgent } from "./heroku-agent.js";
+
+/**
+ * HerokuEmbeddings - Text embeddings for similarity search and RAG
  *
  * Provides access to various embedding models for generating vector representations
  * of text, supporting different input types and encoding formats.
  *
- * @see {@link HerokuMiaEmbeddings} for detailed documentation
+ * @see {@link HerokuEmbeddings} for detailed documentation
  */
-export { HerokuMiaEmbeddings } from "./heroku-mia-embeddings.js";
+export { HerokuEmbeddings } from "./embeddings.js";
 
 // Common Error Classes
 /**
@@ -154,16 +159,24 @@ export type {
   HerokuAgentSSEData, // Union type for agent SSE data
 } from "./types.js";
 
-// Type Definitions for HerokuMiaEmbeddings (Embeddings)
+// Type Definitions for HerokuEmbeddings (Embeddings)
 /**
- * Configuration options for creating a HerokuMiaEmbeddings instance.
- * @see {@link HerokuMiaEmbeddingsFields}
+ * Configuration options for creating a HerokuEmbeddings instance.
+ * @see {@link HerokuEmbeddingsFields}
  */
 export type {
-  HerokuMiaEmbeddingsFields,
-  HerokuMiaEmbeddingsCallOptions,
+  HerokuEmbeddingsFields,
+  HerokuEmbeddingsCallOptions,
   HerokuEmbeddingsRequest,
   HerokuEmbeddingObject,
   HerokuEmbeddingsUsage,
   HerokuEmbeddingsResponse,
+} from "./types.js";
+
+/**
+ * @deprecated Use HerokuEmbeddingsFields instead.
+ */
+export type {
+  HerokuEmbeddingsFields as HerokuMiaEmbeddingsFields,
+  HerokuEmbeddingsCallOptions as HerokuMiaEmbeddingsCallOptions,
 } from "./types.js";

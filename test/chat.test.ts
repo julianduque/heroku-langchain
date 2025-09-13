@@ -1,8 +1,9 @@
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
-import { ChatHeroku } from "../src/chat-heroku";
+import { ChatHeroku } from "../src/chat";
 import { HerokuApiError } from "../src/common";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
+import { z } from "zod";
 
 describe("ChatHeroku", () => {
   let originalEnv: Record<string, string | undefined>;
@@ -328,6 +329,130 @@ describe("ChatHeroku", () => {
       const herokuMia = new ChatHeroku({});
 
       assert.ok(herokuMia);
+    });
+  });
+
+  describe("Structured output", () => {
+    let originalInvoke: any;
+
+    beforeEach(() => {
+      originalInvoke = (ChatHeroku as any).prototype.invoke;
+    });
+
+    afterEach(() => {
+      (ChatHeroku as any).prototype.invoke = originalInvoke;
+    });
+
+    test("should return parsed object for Zod schema", async () => {
+      const JokeSchema = z.object({ setup: z.string(), punchline: z.string() });
+
+      (ChatHeroku as any).prototype.invoke = async function () {
+        return new AIMessage({
+          content: "",
+          tool_calls: [
+            {
+              id: "call_1",
+              name: "extract",
+              args: {
+                setup: "Why did the dev cross the road?",
+                punchline: "To get to the other IDE.",
+              },
+              type: "tool_call",
+            },
+          ],
+        });
+      };
+
+      const llm = new ChatHeroku({});
+      const structured = llm.withStructuredOutput(JokeSchema);
+      const res = await structured.invoke([
+        new HumanMessage("Tell me a short programming joke"),
+      ]);
+
+      assert.strictEqual(typeof res.setup, "string");
+      assert.strictEqual(typeof res.punchline, "string");
+      assert.ok(res.setup.length > 0);
+      assert.ok(res.punchline.length > 0);
+    });
+
+    test("should return parsed object for JSON schema", async () => {
+      const PersonSchema = {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          age: { type: "number" },
+        },
+        required: ["name", "age"],
+        additionalProperties: false,
+      } as const;
+
+      (ChatHeroku as any).prototype.invoke = async function () {
+        return new AIMessage({
+          content: "",
+          tool_calls: [
+            {
+              id: "call_2",
+              name: "extract",
+              args: { name: "Ada", age: 36 },
+              type: "tool_call",
+            },
+          ],
+        });
+      };
+
+      const llm = new ChatHeroku({});
+      const structured = llm.withStructuredOutput(PersonSchema as any);
+      const res = await structured.invoke([new HumanMessage("Ada is 36.")]);
+      assert.deepStrictEqual(res, { name: "Ada", age: 36 });
+    });
+
+    test("should return raw AIMessage and parsed object when includeRaw", async () => {
+      const S = z.object({ x: z.number() });
+
+      (ChatHeroku as any).prototype.invoke = async function () {
+        return new AIMessage({
+          content: "",
+          tool_calls: [
+            {
+              id: "call_3",
+              name: "extract",
+              args: { x: 42 },
+              type: "tool_call",
+            },
+          ],
+        });
+      };
+
+      const llm = new ChatHeroku({});
+      const structured = llm.withStructuredOutput(S, { includeRaw: true });
+      const res = await structured.invoke([new HumanMessage("x is 42")]);
+      assert.ok(res.raw);
+      assert.strictEqual(res.parsed.x, 42);
+    });
+
+    test("should fail Zod validation on invalid output", async () => {
+      const S = z.object({ a: z.string() });
+
+      (ChatHeroku as any).prototype.invoke = async function () {
+        return new AIMessage({
+          content: "",
+          tool_calls: [
+            {
+              id: "call_4",
+              name: "extract",
+              args: { b: 1 },
+              type: "tool_call",
+            },
+          ],
+        });
+      };
+
+      const llm = new ChatHeroku({});
+      const structured = llm.withStructuredOutput(S);
+      await assert.rejects(
+        () => structured.invoke([new HumanMessage("b is 1")]),
+        /Failed to parse/,
+      );
     });
   });
 });

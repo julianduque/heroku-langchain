@@ -1,14 +1,14 @@
 import { Embeddings } from "@langchain/core/embeddings";
 import {
-  HerokuMiaEmbeddingsFields,
-  HerokuMiaEmbeddingsCallOptions,
+  HerokuEmbeddingsFields,
+  HerokuEmbeddingsCallOptions,
   HerokuEmbeddingsRequest,
   HerokuEmbeddingsResponse,
 } from "./types.js";
 import { getHerokuConfigOptionsWithEnvKeys, HerokuApiError } from "./common.js";
 
 /**
- * **HerokuMiaEmbeddings** - Heroku Managed Inference Embeddings Integration
+ * **HerokuEmbeddings** - Heroku Managed Inference Embeddings Integration
  *
  * A LangChain-compatible embeddings class that interfaces with Heroku's Managed Inference API
  * for generating text embeddings. This class provides access to various embedding models
@@ -20,10 +20,10 @@ import { getHerokuConfigOptionsWithEnvKeys, HerokuApiError } from "./common.js";
  *
  * @example
  * ```typescript
- * import { HerokuMiaEmbeddings } from "heroku-langchain";
+ * import { HerokuEmbeddings } from "heroku-langchain";
  *
  * // Basic usage
- * const embeddings = new HerokuMiaEmbeddings({
+ * const embeddings = new HerokuEmbeddings({
  *   model: "cohere-embed-multilingual",
  *   apiKey: process.env.EMBEDDING_KEY,
  *   apiUrl: process.env.EMBEDDING_URL
@@ -44,7 +44,7 @@ import { getHerokuConfigOptionsWithEnvKeys, HerokuApiError } from "./common.js";
  * @example
  * ```typescript
  * // Advanced usage with specific options
- * const embeddings = new HerokuMiaEmbeddings({
+ * const embeddings = new HerokuEmbeddings({
  *   model: "cohere-embed-multilingual",
  *   maxRetries: 3,
  *   timeout: 30000, // 30 seconds
@@ -77,7 +77,7 @@ import { getHerokuConfigOptionsWithEnvKeys, HerokuApiError } from "./common.js";
  * ```typescript
  * // Error handling and validation
  * try {
- *   const embeddings = new HerokuMiaEmbeddings({
+ *   const embeddings = new HerokuEmbeddings({
  *     model: "cohere-embed-multilingual"
  *   });
  *
@@ -91,11 +91,11 @@ import { getHerokuConfigOptionsWithEnvKeys, HerokuApiError } from "./common.js";
  * }
  * ```
  *
- * @see {@link HerokuMiaEmbeddingsFields} for constructor options
- * @see {@link HerokuMiaEmbeddingsCallOptions} for runtime call options
+ * @see {@link HerokuEmbeddingsFields} for constructor options
+ * @see {@link HerokuEmbeddingsCallOptions} for runtime call options
  * @see [Heroku Embeddings API Documentation](https://devcenter.heroku.com/articles/heroku-inference-api-v1-embeddings)
  */
-export class HerokuMiaEmbeddings extends Embeddings {
+export class HerokuEmbeddings extends Embeddings {
   // Fields to store constructor parameters
   protected model: string;
   protected apiKey?: string;
@@ -105,7 +105,7 @@ export class HerokuMiaEmbeddings extends Embeddings {
   protected additionalKwargs: Record<string, any>;
 
   /**
-   * Creates a new HerokuMiaEmbeddings instance.
+   * Creates a new HerokuEmbeddings instance.
    *
    * @param fields - Optional configuration options for the Heroku embeddings model
    * @throws {Error} When model ID is not provided and EMBEDDING_MODEL_ID environment variable is not set
@@ -113,10 +113,10 @@ export class HerokuMiaEmbeddings extends Embeddings {
    * @example
    * ```typescript
    * // Basic usage with defaults
-   * const embeddings = new HerokuMiaEmbeddings();
+   * const embeddings = new HerokuEmbeddings();
    *
    * // With custom configuration
-   * const embeddings = new HerokuMiaEmbeddings({
+   * const embeddings = new HerokuEmbeddings({
    *   model: "cohere-embed-multilingual",
    *   apiKey: "your-embedding-api-key",
    *   apiUrl: "https://us.inference.heroku.com",
@@ -125,7 +125,7 @@ export class HerokuMiaEmbeddings extends Embeddings {
    * });
    * ```
    */
-  constructor(fields?: HerokuMiaEmbeddingsFields) {
+  constructor(fields?: HerokuEmbeddingsFields) {
     super(fields ?? {});
 
     const modelFromEnv =
@@ -149,10 +149,10 @@ export class HerokuMiaEmbeddings extends Embeddings {
 
   /**
    * Get the model name for identification.
-   * @returns The string "HerokuMiaEmbeddings"
+   * @returns The string "HerokuEmbeddings"
    */
   get lc_name(): string {
-    return "HerokuMiaEmbeddings";
+    return "HerokuEmbeddings";
   }
 
   /**
@@ -175,7 +175,7 @@ export class HerokuMiaEmbeddings extends Embeddings {
    * @internal
    */
   private invocationParams(
-    options?: HerokuMiaEmbeddingsCallOptions,
+    options?: HerokuEmbeddingsCallOptions,
   ): Omit<HerokuEmbeddingsRequest, "input"> {
     const constructorParams = {
       model: this.model,
@@ -346,7 +346,7 @@ export class HerokuMiaEmbeddings extends Embeddings {
    *
    * @example
    * ```typescript
-   * const embeddings = new HerokuMiaEmbeddings({ model: "cohere-embed-multilingual" });
+   * const embeddings = new HerokuEmbeddings({ model: "cohere-embed-multilingual" });
    *
    * // Basic query embedding
    * const queryVector = await embeddings.embedQuery("machine learning algorithms");
@@ -367,7 +367,7 @@ export class HerokuMiaEmbeddings extends Embeddings {
    */
   async embedQuery(
     text: string,
-    options?: HerokuMiaEmbeddingsCallOptions,
+    options?: HerokuEmbeddingsCallOptions,
   ): Promise<number[]> {
     const embeddings = await this.embedDocuments([text], {
       ...options,
@@ -389,7 +389,7 @@ export class HerokuMiaEmbeddings extends Embeddings {
    *
    * @example
    * ```typescript
-   * const embeddings = new HerokuMiaEmbeddings({ model: "openai-text-embedding-3-large" });
+   * const embeddings = new HerokuEmbeddings({ model: "openai-text-embedding-3-large" });
    *
    * const documents = [
    *   "Heroku is a cloud platform for building and running applications.",
@@ -414,7 +414,7 @@ export class HerokuMiaEmbeddings extends Embeddings {
    */
   async embedDocuments(
     documents: string[],
-    options?: HerokuMiaEmbeddingsCallOptions,
+    options?: HerokuEmbeddingsCallOptions,
   ): Promise<number[][]> {
     // Validate input constraints immediately to avoid network calls for invalid input
     this.validateInput(documents);
@@ -439,7 +439,7 @@ export class HerokuMiaEmbeddings extends Embeddings {
    */
   private async _embedDocuments(
     documents: string[],
-    options?: HerokuMiaEmbeddingsCallOptions,
+    options?: HerokuEmbeddingsCallOptions,
   ): Promise<number[][]> {
     // Input is already validated in embedDocuments method
 

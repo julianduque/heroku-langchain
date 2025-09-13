@@ -1,8 +1,8 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
-import { HerokuMiaEmbeddings } from "../src/heroku-mia-embeddings.js";
+import { HerokuEmbeddings } from "../src/embeddings.js";
 
-describe("HerokuMiaEmbeddings", () => {
+describe("HerokuEmbeddings", () => {
   let originalEnv: Record<string, string | undefined>;
 
   beforeEach(() => {
@@ -32,7 +32,7 @@ describe("HerokuMiaEmbeddings", () => {
       const original = process.env.EMBEDDING_MODEL_ID;
       delete process.env.EMBEDDING_MODEL_ID;
       try {
-        new HerokuMiaEmbeddings();
+        new HerokuEmbeddings();
       } finally {
         if (original) {
           process.env.EMBEDDING_MODEL_ID = original;
@@ -42,21 +42,21 @@ describe("HerokuMiaEmbeddings", () => {
   });
 
   it("should create instance with model", () => {
-    const embeddings = new HerokuMiaEmbeddings({
+    const embeddings = new HerokuEmbeddings({
       model: "cohere-embed-multilingual",
     });
     assert.ok(embeddings);
   });
 
   it("should have correct lc_name", () => {
-    const embeddings = new HerokuMiaEmbeddings({
+    const embeddings = new HerokuEmbeddings({
       model: "cohere-embed-multilingual",
     });
-    assert.strictEqual(embeddings.lc_name, "HerokuMiaEmbeddings");
+    assert.strictEqual(embeddings.lc_name, "HerokuEmbeddings");
   });
 
   it("should validate input constraints", () => {
-    const embeddings = new HerokuMiaEmbeddings({
+    const embeddings = new HerokuEmbeddings({
       model: "cohere-embed-multilingual",
     });
 
@@ -79,7 +79,7 @@ describe("HerokuMiaEmbeddings", () => {
     const original = process.env.EMBEDDING_MODEL_ID;
     process.env.EMBEDDING_MODEL_ID = "test-model";
     try {
-      const embeddings = new HerokuMiaEmbeddings();
+      const embeddings = new HerokuEmbeddings();
       assert.ok(embeddings);
     } finally {
       if (original) {
@@ -91,7 +91,7 @@ describe("HerokuMiaEmbeddings", () => {
   });
 
   it("should have correct lc_serializable", () => {
-    const embeddings = new HerokuMiaEmbeddings({
+    const embeddings = new HerokuEmbeddings({
       model: "cohere-embed-multilingual",
     });
     assert.strictEqual(embeddings.lc_serializable, true);
@@ -100,10 +100,10 @@ describe("HerokuMiaEmbeddings", () => {
   // New tests for optional constructor
   describe("Optional Constructor", () => {
     it("should create instance without any parameters when environment variables are set", () => {
-      const embeddings = new HerokuMiaEmbeddings();
+      const embeddings = new HerokuEmbeddings();
 
       assert.ok(embeddings);
-      assert.strictEqual(embeddings.lc_name, "HerokuMiaEmbeddings");
+      assert.strictEqual(embeddings.lc_name, "HerokuEmbeddings");
     });
 
     it("should throw error when no parameters and no environment variables", () => {
@@ -114,7 +114,7 @@ describe("HerokuMiaEmbeddings", () => {
         delete process.env.EMBEDDING_MODEL_ID;
 
         assert.throws(
-          () => new HerokuMiaEmbeddings(),
+          () => new HerokuEmbeddings(),
           /Heroku embeddings model ID not found/,
         );
       } finally {
@@ -127,7 +127,7 @@ describe("HerokuMiaEmbeddings", () => {
 
     it("should prioritize constructor parameters over environment variables", () => {
       const customModel = "custom-embed-model";
-      const embeddings = new HerokuMiaEmbeddings({ model: customModel });
+      const embeddings = new HerokuEmbeddings({ model: customModel });
 
       assert.ok(embeddings);
       // We can verify the model is used by checking the invocation params
@@ -137,7 +137,7 @@ describe("HerokuMiaEmbeddings", () => {
 
     it("should use environment variables when constructor parameters are undefined", () => {
       const envModel = process.env.EMBEDDING_MODEL_ID;
-      const embeddings = new HerokuMiaEmbeddings();
+      const embeddings = new HerokuEmbeddings();
 
       const params = (embeddings as any).invocationParams();
       assert.strictEqual(params.model, envModel);
@@ -147,7 +147,7 @@ describe("HerokuMiaEmbeddings", () => {
       const customMaxRetries = 5;
       const customAdditionalKwargs = { encoding_format: "base64" };
 
-      const embeddings = new HerokuMiaEmbeddings({
+      const embeddings = new HerokuEmbeddings({
         maxRetries: customMaxRetries,
         additionalKwargs: customAdditionalKwargs,
       });
@@ -162,12 +162,12 @@ describe("HerokuMiaEmbeddings", () => {
     it("should support all constructor parameters being optional", () => {
       // Test that all parameter combinations work
       assert.doesNotThrow(() => {
-        new HerokuMiaEmbeddings();
-        new HerokuMiaEmbeddings({});
-        new HerokuMiaEmbeddings({ model: "custom-model" });
-        new HerokuMiaEmbeddings({ maxRetries: 3 });
-        new HerokuMiaEmbeddings({ timeout: 10000 });
-        new HerokuMiaEmbeddings({
+        new HerokuEmbeddings();
+        new HerokuEmbeddings({});
+        new HerokuEmbeddings({ model: "custom-model" });
+        new HerokuEmbeddings({ maxRetries: 3 });
+        new HerokuEmbeddings({ timeout: 10000 });
+        new HerokuEmbeddings({
           additionalKwargs: { input_type: "search_query" },
         });
       });

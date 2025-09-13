@@ -17,8 +17,10 @@ import {
   Runnable,
   RunnablePassthrough,
   RunnableSequence,
+  RunnableLambda,
 } from "@langchain/core/runnables";
 import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
+import { SystemMessage } from "@langchain/core/messages";
 import {
   ChatHerokuFields,
   ChatHerokuCallOptions,
@@ -382,6 +384,112 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
     options: this["ParsedCallOptions"],
     runManager?: CallbackManagerForLLMRun,
   ): Promise<ChatResult> {
+    // If streaming is requested, delegate to _stream and aggregate results.
+    const shouldStream = (options as any).stream ?? this.streaming;
+    if (shouldStream) {
+      let aggregatedContent = "";
+      const toolCallChunks: LocalToolCallChunk[] = [];
+      let finalFinishReason: string | null = null;
+      const FALLBACK_TEXT = "I'll use the available tools to help you.";
+
+      for await (const chunk of this._stream(messages, options, runManager)) {
+        if (chunk.content) aggregatedContent += chunk.content;
+        if (
+          (chunk as any).tool_call_chunks &&
+          (chunk as any).tool_call_chunks.length > 0
+        ) {
+          toolCallChunks.push(
+            ...((chunk as any).tool_call_chunks as LocalToolCallChunk[]),
+          );
+        }
+        if (
+          chunk.additional_kwargs &&
+          (chunk.additional_kwargs as any).finish_reason
+        ) {
+          finalFinishReason = (chunk.additional_kwargs as any)
+            .finish_reason as string;
+        }
+      }
+
+      // Assemble tool calls from chunks
+      const aggregatedToolCalls: {
+        id: string;
+        name: string;
+        args: any;
+        type: "tool_call";
+      }[] = [];
+      if (toolCallChunks.length > 0) {
+        const toolCallMap = new Map<
+          string,
+          { name?: string; argsSlices?: string[]; index?: number }
+        >();
+        toolCallChunks.forEach((chunk) => {
+          const key = (chunk as any).id ?? `${(chunk as any).index}`;
+          if (!key) return;
+          let entry = toolCallMap.get(key);
+          if (!entry) {
+            entry = { argsSlices: [], index: (chunk as any).index };
+            toolCallMap.set(key, entry);
+          }
+          if ((chunk as any).name) entry.name = (chunk as any).name;
+          if ((chunk as any).args !== undefined)
+            entry.argsSlices!.push((chunk as any).args as string);
+        });
+        toolCallMap.forEach((assembledTc, id) => {
+          if (
+            assembledTc.name &&
+            assembledTc.argsSlices &&
+            assembledTc.argsSlices.length > 0
+          ) {
+            const fullArgsString = assembledTc.argsSlices.join("");
+            try {
+              aggregatedToolCalls.push({
+                id,
+                name: assembledTc.name,
+                args: JSON.parse(fullArgsString),
+                type: "tool_call",
+              });
+            } catch {
+              aggregatedToolCalls.push({
+                id,
+                name: assembledTc.name,
+                args: fullArgsString,
+                type: "tool_call",
+              });
+            }
+          }
+        });
+      }
+
+      const finalMessage = new AIMessage({
+        content:
+          aggregatedContent && aggregatedContent.length > 0
+            ? aggregatedContent
+            : toolCallChunks.length > 0
+              ? FALLBACK_TEXT
+              : "",
+        tool_calls:
+          aggregatedToolCalls.length > 0 ? aggregatedToolCalls : undefined,
+        additional_kwargs: finalFinishReason
+          ? { finish_reason: finalFinishReason }
+          : {},
+      });
+      const generation: ChatGeneration = {
+        message: finalMessage,
+        text:
+          aggregatedContent && aggregatedContent.length > 0
+            ? aggregatedContent
+            : aggregatedToolCalls.length > 0
+              ? FALLBACK_TEXT
+              : "",
+        generationInfo: finalFinishReason
+          ? { finish_reason: finalFinishReason }
+          : undefined,
+      } as ChatGeneration;
+      return { generations: [generation], llmOutput: {} };
+    }
+
+    // Non-streaming: make a single completion request and return the result.
     const herokuConfig = getHerokuConfigOptions(
       this.apiKey,
       this.apiUrl,
@@ -397,7 +505,7 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
       temperature: params.temperature,
       max_tokens: params.max_tokens,
       stop: params.stop,
-      stream: (options as any).stream ?? this.streaming,
+      stream: false,
       top_p: params.top_p,
       tools: params.tools,
       tool_choice: params.tool_choice,
@@ -435,11 +543,11 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
         });
 
         if (timeoutId) clearTimeout(timeoutId);
-        response = currentResponse; // Assign to the outer scope variable
+        response = currentResponse;
 
         if (response.ok) {
           successfulResponse = true;
-          break; // Successful response, exit loop
+          break;
         }
 
         if (response.status >= 400 && response.status < 500) {
@@ -451,7 +559,7 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
             response.status,
             errorData,
           );
-          break; // Non-retryable client error, exit loop
+          break;
         }
 
         lastError = new HerokuApiError(
@@ -459,7 +567,7 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
           response.status,
         );
       } catch (error: any) {
-        lastError = error; // Capture network errors or aborts
+        lastError = error;
       }
 
       attempt++;
@@ -471,230 +579,58 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
     if (!successfulResponse || !response) {
       if (lastError instanceof HerokuApiError) throw lastError;
       if (lastError)
-        throw new HerokuApiError( // Wrap non-HerokuApiError
+        throw new HerokuApiError(
           `Failed to connect to Heroku API after ${maxRetries + 1} attempts: ${lastError.message}`,
-          response?.status, // status might be undefined if response is undefined
+          response?.status,
           lastError,
         );
-      // Fallback if no specific error was captured but response is not successful
       throw new HerokuApiError(
         "Heroku API request failed after all retries.",
         response?.status,
       );
     }
 
-    // At this point, response is defined and response.ok is true.
+    const herokuResponse: HerokuChatCompletionResponse = await response.json();
+    const choice = herokuResponse.choices[0];
 
-    if (requestPayload.stream) {
-      let aggregatedContent = "";
-      const toolCallChunks: LocalToolCallChunk[] = []; // Use LocalToolCallChunk
-      let finalFinishReason: string | null = null;
-      // let finalUsage: HerokuChatCompletionUsage | undefined = undefined; // If Heroku sends usage in stream
-      const allAIMessageChunks: AIMessageChunk[] = []; // To store individual AIMessageChunks
+    const parsedToolCalls = choice.message.tool_calls?.map((tc) => ({
+      id: tc.id,
+      name: tc.function.name,
+      args: JSON.parse(tc.function.arguments),
+      type: "tool_call" as const,
+    }));
 
-      try {
-        for await (const parsedEvent of parseHerokuSSE(response.body!)) {
-          if (parsedEvent.event === "error") {
-            // Hypothetical error event from stream
-            throw new HerokuApiError(
-              "Error received in SSE stream",
-              undefined,
-              parsedEvent.data,
-            );
-          }
+    const {
+      role: _role,
+      content: msgContent,
+      tool_calls: _rawToolCalls,
+      ...restOfMessage
+    } = choice.message;
 
-          // Heroku /v1/chat/completions streams event: message, data: JSON object
-          // and a final event: done, data: {"status": "completed"} (or similar)
-          // We primarily care about event: message for content/tool_calls
-          if (parsedEvent.event === "done") {
-            // Potentially parse final data if it contains usage or status
-            // For now, we just break or let the stream end naturally.
-            // console.log("SSE stream 'done' event received:", parsedEvent.data);
-            break;
-          }
-
-          if (parsedEvent.data) {
-            try {
-              const streamChunk = JSON.parse(
-                parsedEvent.data,
-              ) as HerokuChatCompletionStreamResponse;
-              if (streamChunk.choices && streamChunk.choices.length > 0) {
-                const choice = streamChunk.choices[0];
-                const delta = choice.delta;
-
-                let currentChunkContent = "";
-                let currentToolCallChunks: LocalToolCallChunk[] | undefined =
-                  undefined; // Use LocalToolCallChunk
-
-                if (delta.content) {
-                  aggregatedContent += delta.content;
-                  currentChunkContent = delta.content;
-                  runManager?.handleLLMNewToken(delta.content);
-                }
-
-                if (delta.tool_calls && delta.tool_calls.length > 0) {
-                  currentToolCallChunks = delta.tool_calls.map(
-                    (tcChunk, tcChunkIndex) => {
-                      return {
-                        name: tcChunk.function?.name,
-                        args: tcChunk.function?.arguments,
-                        id: tcChunk.id,
-                        index: (tcChunk as any).index ?? tcChunkIndex,
-                        type: "tool_call_chunk" as const,
-                      };
-                    },
-                  );
-                  toolCallChunks.push(...currentToolCallChunks);
-                }
-
-                const { tool_calls: _deltaToolCalls, ...remainingDelta } =
-                  delta;
-
-                allAIMessageChunks.push(
-                  new AIMessageChunk({
-                    content: currentChunkContent || "",
-                    tool_call_chunks: currentToolCallChunks as any,
-                    additional_kwargs: { ...remainingDelta },
-                  }),
-                );
-
-                if (choice.finish_reason) {
-                  finalFinishReason = choice.finish_reason;
-                }
-              }
-            } catch (e: any) {
-              runManager?.handleLLMError(e);
-              throw new HerokuApiError(
-                "Failed to parse SSE data chunk",
-                undefined,
-                { data: parsedEvent.data, error: e.message },
-              );
-            }
-          }
-        }
-      } catch (streamError: any) {
-        runManager?.handleLLMError(streamError);
-        throw streamError;
-      }
-
-      // After the loop, construct the final ChatGeneration from aggregated data
-      const aggregatedToolCalls: {
-        id: string;
-        name: string;
-        args: any;
-        type: "tool_call";
-      }[] = [];
-      if (toolCallChunks.length > 0) {
-        const toolCallMap = new Map<
-          string,
-          { name?: string; argsSlices?: string[]; index?: number }
-        >();
-        toolCallChunks.forEach((chunk) => {
-          if (!chunk.id) return;
-          let entry = toolCallMap.get(chunk.id);
-          if (!entry) {
-            entry = { argsSlices: [], index: chunk.index };
-            toolCallMap.set(chunk.id, entry);
-          }
-          if (chunk.name) entry.name = chunk.name;
-          if (chunk.args !== undefined) entry.argsSlices?.push(chunk.args);
-        });
-
-        toolCallMap.forEach((assembledTc, id) => {
-          if (
-            assembledTc.name &&
-            assembledTc.argsSlices &&
-            assembledTc.argsSlices.length > 0
-          ) {
-            const fullArgsString = assembledTc.argsSlices.join("");
-            try {
-              aggregatedToolCalls.push({
-                id,
-                name: assembledTc.name,
-                args: JSON.parse(fullArgsString),
-                type: "tool_call",
-              });
-            } catch (e) {
-              console.warn(
-                `[ChatHeroku] Failed to parse tool call arguments for id ${id}: ${fullArgsString}`,
-                e,
-              );
-              aggregatedToolCalls.push({
-                id,
-                name: assembledTc.name,
-                args: fullArgsString, // Keep as string if parsing failed
-                type: "tool_call",
-              });
-            }
-          }
-        });
-      }
-
-      const finalMessage = new AIMessage({
-        content: aggregatedContent,
-        tool_calls:
-          aggregatedToolCalls.length > 0 ? aggregatedToolCalls : undefined,
-        // tool_call_chunks are not typically part of a final AIMessage, they are for streaming.
-        // If any other specific kwargs from the last chunk or overall stream are needed, add them here.
-        additional_kwargs: { finish_reason: finalFinishReason },
-      });
-
-      const generation: ChatGeneration = {
-        message: finalMessage,
-        text: aggregatedContent,
-        generationInfo: {
-          finish_reason: finalFinishReason,
-        },
-      };
-      return {
-        generations: [generation],
-        llmOutput: {
-          // tokenUsage might be available from a final SSE event if Heroku sends it
-        },
-      };
-    } else {
-      // Non-streaming response handling
-      const herokuResponse: HerokuChatCompletionResponse =
-        await response.json();
-      const choice = herokuResponse.choices[0];
-
-      const parsedToolCalls = choice.message.tool_calls?.map((tc) => ({
-        id: tc.id,
-        name: tc.function.name,
-        args: JSON.parse(tc.function.arguments), // Heroku sends arguments as JSON string
-        type: "tool_call" as const,
-      }));
-
-      // Destructure choice.message to separate standard fields from true additional_kwargs
-      const {
-        role: _role, // Already handled by AIMessage type
-        content: msgContent,
-        tool_calls: _rawToolCalls, // Already parsed into parsedToolCalls
-        ...restOfMessage // These are the true additional_kwargs
-      } = choice.message;
-
-      const generation: ChatGeneration = {
-        message: new AIMessage({
-          content: (msgContent as string) || "",
-          tool_calls: parsedToolCalls,
-          additional_kwargs: restOfMessage, // Use only the remaining fields
-        }),
-        text: (msgContent as string) || "",
-        generationInfo: {
-          finish_reason: choice.finish_reason,
-          index: choice.index,
-          // If restOfMessage contained other relevant top-level choice fields, they could be added here too
-          // e.g., if Heroku adds something like 'system_fingerprint' at the choice.message level
-        },
-      };
-
-      const llmOutput = {
-        tokenUsage: herokuResponse.usage,
-        response: herokuResponse, // Include raw response
-      };
-
-      return { generations: [generation], llmOutput };
+    let content = msgContent as string;
+    if (parsedToolCalls && parsedToolCalls.length > 0 && content === "") {
+      content = "I'll use the available tools to help you.";
     }
+
+    const generation: ChatGeneration = {
+      message: new AIMessage({
+        content: content,
+        tool_calls: parsedToolCalls,
+        additional_kwargs: restOfMessage,
+      }),
+      text: content,
+      generationInfo: {
+        finish_reason: choice.finish_reason,
+        index: choice.index,
+      },
+    };
+
+    const llmOutput = {
+      tokenUsage: herokuResponse.usage,
+      response: herokuResponse,
+    };
+
+    return { generations: [generation], llmOutput };
   }
 
   async *_stream(
@@ -806,6 +742,9 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
     }
 
     // Process the SSE stream
+    let anyContentEmitted = false;
+    let anyToolCallObserved = false;
+    const FALLBACK_TEXT = "I'll use the available tools to help you.";
     for await (const parsedEvent of parseHerokuSSE(response.body)) {
       if (parsedEvent.event === "error") {
         throw new HerokuApiError(
@@ -833,6 +772,8 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
 
             if (delta.content) {
               currentChunkContent = delta.content;
+              anyContentEmitted =
+                anyContentEmitted || currentChunkContent.length > 0;
             }
 
             if (delta.tool_calls && delta.tool_calls.length > 0) {
@@ -845,6 +786,7 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
                   type: "tool_call_chunk" as const,
                 }),
               );
+              if (currentToolCallChunks.length > 0) anyToolCallObserved = true;
             }
 
             const { tool_calls: _deltaToolCalls, ...remainingDelta } = delta;
@@ -874,6 +816,11 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
           );
         }
       }
+    }
+
+    // If no textual content was emitted but tool calls were observed, emit a synthetic message
+    if (!anyContentEmitted && anyToolCallObserved) {
+      yield new AIMessageChunk({ content: FALLBACK_TEXT });
     }
   }
 
@@ -997,127 +944,93 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
       );
     }
 
-    let llm: ChatHeroku;
-    let outputParser: JsonOutputKeyToolsParser<RunOutput>;
-
+    // Unified: Build parameters and tool once from Zod or JSON schema
+    let parametersJson: Record<string, any>;
+    let zodSchemaForValidation: z.ZodType<RunOutput> | undefined;
     if (this.isZodSchema(schema)) {
-      // Convert Zod schema to JSON schema
-      const asJsonSchema = zodToJsonSchema(schema);
-
-      // Remove $schema field as Heroku API doesn't accept it
-      const { $schema: _$schema, ...cleanParameters } = asJsonSchema;
-
-      // Create the tool definition
-      const tool = {
-        type: "function" as const,
-        function: {
-          name: functionName,
-          description:
-            description ??
-            asJsonSchema.description ??
-            "A function available to call.",
-          parameters: cleanParameters,
-        },
-      };
-
-      // Create a new ChatHeroku instance with the same configuration but with tools pre-bound
-      llm = new ChatHeroku({
-        model: this.model,
-        temperature: this.temperature,
-        maxTokens: this.maxTokens,
-        stop: this.stop,
-        topP: this.topP,
-        apiKey: this.apiKey,
-        apiUrl: this.apiUrl,
-        maxRetries: this.maxRetries,
-        timeout: this.timeout,
-        streaming: this.streaming,
-        additionalKwargs: this.additionalKwargs,
-      });
-
-      // Override the invocationParams method to include the bound tools and force tool choice
-      const originalInvocationParams = llm.invocationParams.bind(llm);
-      llm.invocationParams = function (
-        options?: Partial<ChatHerokuCallOptions>,
-      ) {
-        const params = originalInvocationParams(options);
-        // Directly pass the tool schema instead of using langchainToolsToHerokuTools
-        // since we're not dealing with actual StructuredTool instances
-        return {
-          ...params,
-          tools: [tool],
-          tool_choice: {
-            type: "function",
-            function: { name: functionName },
-          },
-        };
-      };
-
-      // Create output parser
-      outputParser = new JsonOutputKeyToolsParser({
-        returnSingle: true,
-        keyName: functionName,
-        zodSchema: schema,
-      });
+      const asJsonSchema = zodToJsonSchema(schema, { $refStrategy: "none" });
+      const { $schema: _ignored, ...clean } = asJsonSchema as Record<
+        string,
+        any
+      >;
+      parametersJson = clean;
+      zodSchemaForValidation = schema as z.ZodType<RunOutput>;
     } else {
-      // Handle JSON schema
-      const tool = {
-        type: "function" as const,
-        function: {
-          name: functionName,
-          description:
-            description ??
-            schema.description ??
-            "A function available to call.",
-          parameters: schema,
+      const { $schema: _ignored, ...clean } = schema as Record<string, any>;
+      parametersJson = clean;
+    }
+
+    const tool = {
+      type: "function" as const,
+      function: {
+        name: functionName,
+        description:
+          description ??
+          (parametersJson.description as string | undefined) ??
+          "A tool to convert data to a specific structured output conforming to the provided schema.",
+        parameters: parametersJson,
+      },
+    };
+
+    // Create a new ChatHeroku instance with the same configuration but with tools pre-bound
+    const llm = new ChatHeroku({
+      model: this.model,
+      temperature: this.temperature,
+      maxTokens: this.maxTokens,
+      stop: this.stop,
+      topP: this.topP,
+      apiKey: this.apiKey,
+      apiUrl: this.apiUrl,
+      maxRetries: this.maxRetries,
+      timeout: this.timeout,
+      streaming: this.streaming,
+      additionalKwargs: this.additionalKwargs,
+    });
+
+    // Override the invocationParams method to include the bound tools and force tool choice
+    const originalInvocationParams = llm.invocationParams.bind(llm);
+    llm.invocationParams = function (options?: Partial<ChatHerokuCallOptions>) {
+      const params = originalInvocationParams(options);
+      // Directly pass the tool schema instead of using langchainToolsToHerokuTools
+      // since we're not dealing with actual StructuredTool instances
+      return {
+        ...params,
+        tools: [tool],
+        tool_choice: {
+          type: "function",
+          function: { name: functionName },
         },
       };
+    };
 
-      // Create a new ChatHeroku instance with the same configuration but with tools pre-bound
-      llm = new ChatHeroku({
-        model: this.model,
-        temperature: this.temperature,
-        maxTokens: this.maxTokens,
-        stop: this.stop,
-        topP: this.topP,
-        apiKey: this.apiKey,
-        apiUrl: this.apiUrl,
-        maxRetries: this.maxRetries,
-        timeout: this.timeout,
-        streaming: this.streaming,
-        additionalKwargs: this.additionalKwargs,
-      });
+    // Create output parser (validate with zod when available)
+    const outputParser = new JsonOutputKeyToolsParser<RunOutput>({
+      returnSingle: true,
+      keyName: functionName,
+      ...(zodSchemaForValidation ? { zodSchema: zodSchemaForValidation } : {}),
+    });
+    // Prepend an instruction system message to strongly nudge function calling
+    const instruction = new SystemMessage(
+      `You must provide the result by calling the function "${functionName}" with arguments that strictly conform to the provided JSON schema. ` +
+        `Only return the function call with valid, fully-specified arguments. Do not include any extra text.`,
+    );
 
-      // Override the invocationParams method to include the bound tools and force tool choice
-      const originalInvocationParams = llm.invocationParams.bind(llm);
-      llm.invocationParams = function (
-        options?: Partial<ChatHerokuCallOptions>,
-      ) {
-        const params = originalInvocationParams(options);
-        // Directly pass the tool schema instead of using langchainToolsToHerokuTools
-        // since we're not dealing with actual StructuredTool instances
-        return {
-          ...params,
-          tools: [tool],
-          tool_choice: {
-            type: "function",
-            function: { name: functionName },
-          },
-        };
-      };
-
-      // Create output parser
-      outputParser = new JsonOutputKeyToolsParser({
-        returnSingle: true,
-        keyName: functionName,
-      });
-    }
+    const prependInstruction = RunnableLambda.from(
+      async (input: BaseLanguageModelInput) => {
+        // If input is an array of messages, prepend our instruction
+        if (Array.isArray(input)) {
+          return [instruction, ...input];
+        }
+        return input;
+      },
+    );
 
     if (!includeRaw) {
-      return llm.pipe(outputParser);
+      // instruction -> llm -> parse
+      return prependInstruction.pipe(llm).pipe(outputParser);
     }
 
-    // Handle includeRaw case
+    // Handle includeRaw case: instruction -> llm, then parse input.raw
     const parserAssign = RunnablePassthrough.assign({
       parsed: (input: any, config?: any) =>
         outputParser.invoke(input.raw, config),
@@ -1133,7 +1046,7 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
 
     return RunnableSequence.from([
       {
-        raw: llm,
+        raw: prependInstruction.pipe(llm),
       },
       parsedWithFallback,
     ]) as any;

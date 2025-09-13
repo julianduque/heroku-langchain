@@ -293,26 +293,27 @@ Complete working examples are available in the `examples/` folder, organized by 
 
 ### Chat Completions (`ChatHeroku`)
 
-- **`examples/heroku-mia-chat-example.ts`** - Basic chat completion and streaming usage
-- **`examples/heroku-mia-chat-custom-tool.ts`** - Custom weather tool with function calling
-- **`examples/heroku-mia-chat-structured-output.ts`** - Structured output with Zod schemas for jokes and text analysis
-- **`examples/heroku-mia-chat-wikipedia-tool.ts`** - Advanced tool integration with Wikipedia search
-- **`examples/heroku-mia-chat-lcel-prompt.ts`** - Using LangChain Expression Language (LCEL) with prompt templates
-- **`examples/heroku-mia-runnable-sequence.ts`** - Building complex chains with LCEL and RunnablePassthrough
-- **`examples/heroku-mia-langraph.ts`** - Multi-agent workflow with LangGraph for weather analysis
+- `examples/chat-basic.ts` — Basic chat completion
+- `examples/chat-custom-tool.ts` — Custom weather tool with function calling
+- `examples/chat-structured-output.ts` — Structured output with Zod schemas
+- `examples/chat-wikipedia-tool.ts` — Tool integration with Wikipedia search
+- `examples/chat-lcel-prompt.ts` — LCEL with prompt templates
+- `examples/chat-runnable-sequence.ts` — Chaining with RunnableSequence
 
 ### Agents (`HerokuAgent`)
 
-- **`examples/heroku-agent-example.ts`** - Using Heroku tools with agents to execute commands on Heroku apps
-- **`examples/heroku-agent-example-mcp.ts`** - Using MCP tools with agents for web search and external services
+- `examples/heroku-agent-example.ts` — Using Heroku tools to execute commands on apps
+- `examples/heroku-agent-example-mcp.ts` — Using MCP tools with agents
 
-### Text Embeddings (`HerokuMiaEmbeddings`)
+### Text Embeddings (`HerokuEmbeddings`)
 
-- **`examples/heroku-mia-embeddings-example.ts`** - Complete embeddings workflow including similarity search and document embedding
+- `examples/embeddings-basic.ts` — Basic embeddings usage for queries and documents
 
 ### Advanced Integrations
 
-- **`examples/heroku-mia-langraph-mcp.ts`** - LangGraph with MCP tools for database interactions
+- `examples/langraph.ts` — Multi-agent workflow with LangGraph
+- `examples/heroku-agent-langgraph.ts` — CAgent workflow with LangGraph and Heroku Tools
+- `examples/langraph-mcp.ts` — LangGraph with MCP tools for database interactions
 
 ### Running Examples
 
@@ -330,16 +331,16 @@ export EMBEDDING_KEY="your-embedding-api-key"
 export EMBEDDING_URL="your-embedding-api-url"
 
 # Run a chat example
-npx tsx examples/heroku-mia-chat-example.ts
+npx tsx examples/chat-basic.ts
 
 # Run a structured output example
-npx tsx examples/heroku-mia-chat-structured-output.ts
+npx tsx examples/chat-structured-output.ts
 
 # Run an agent example
 npx tsx examples/heroku-agent-example.ts
 
 # Run the embeddings example
-npx tsx examples/heroku-mia-embeddings-example.ts
+npx tsx examples/embeddings-basic.ts
 ```
 
 ## API Documentation

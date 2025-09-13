@@ -1,4 +1,4 @@
-import { HerokuAgent } from "../src"; // Adjusted for local example structure
+import { HerokuAgent, createHerokuAgent } from "../src"; // Adjusted for local example structure
 import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgentToolDefinition } from "../src/types"; // Assuming types are exported from ../src/types
 
@@ -31,11 +31,34 @@ async function main() {
     tools: tools,
   });
 
+  const agent = createHerokuAgent({
+    tools: tools,
+  });
+
   try {
+    console.log("\n🔧 === Heroku ReaAct Agent ===");
+    const agentResponse = await agent.invoke({
+      messages: [
+        new HumanMessage(
+          "What time is it on the app server? Please use the available tools to check.",
+        ),
+      ],
+    });
+    console.log(
+      agentResponse.messages[agentResponse.messages.length - 1].content,
+    );
+
     console.log("\n🔧 === Heroku Tool Execution ===");
 
+    const response = await agentExecutor.invoke([
+      new HumanMessage(
+        "What time is it on the app server? Please use the available tools to check.",
+      ),
+    ]);
+    console.log(response.content);
+
     // First interaction - simple streaming
-    console.log("\n🔄 Streaming HerokuAgent...");
+    console.log("\n🔄 HerokuAgent Stream...");
     const stream = await agentExecutor.stream([
       new HumanMessage(
         "What time is it on the app server? Please use the available tools to check.",

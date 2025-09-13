@@ -66,7 +66,7 @@ export default [
   {
     ignores: [
       "dist/**/*",
-      "docs/api/**/*",
+      "docs/**/*",
       "**/*.json",
       "**/*.md",
       "node_modules/**/*",
