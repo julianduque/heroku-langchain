@@ -19,8 +19,8 @@ async function main() {
     "   Set HEROKU_APP_NAME environment variable to use a different app.",
   );
 
-  const agentExecutor = new HerokuAgent({
-    tools: tools,
+  const agent = new HerokuAgent({
+    tools,
   });
 
   try {
@@ -28,7 +28,7 @@ async function main() {
 
     // First interaction - simple streaming
     console.log("\n🔄 Streaming HerokuAgent...");
-    const stream = await agentExecutor.stream([
+    const stream = await agent.stream([
       new HumanMessage("What is new in the world of AI?"),
     ]);
 

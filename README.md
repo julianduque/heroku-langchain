@@ -199,15 +199,15 @@ async function agentExample() {
     "   Set HEROKU_APP_NAME environment variable to use a different app.",
   );
 
-  const agentExecutor = new HerokuAgent({
-    tools: tools,
+  const agent = new HerokuAgent({
+    tools,
   });
 
   try {
     console.log("\n=== Heroku Tool Execution ===");
     console.log("\nStreaming HerokuAgent...");
 
-    const stream = await agentExecutor.stream([
+    const stream = await agent.stream([
       new HumanMessage(
         "What time is it on the app server? Please use the available tools to check.",
       ),
@@ -270,11 +270,11 @@ async function mcpExample() {
     },
   ];
 
-  const agentExecutor = new HerokuAgent({
+  const agent = new HerokuAgent({
     tools: tools,
   });
 
-  const stream = await agentExecutor.stream([
+  const stream = await agent.stream([
     new HumanMessage("What is new in the world of AI?"),
   ]);
 
