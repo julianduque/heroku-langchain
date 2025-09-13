@@ -74,7 +74,7 @@ function reviewRouting(state: typeof MessagesAnnotation.State) {
   if (feedback.toLowerCase() === "approve") {
     console.log("Approved:\n");
 
-    const finalMsg = state.messages[state.messages.length - 1];
+    const finalMsg = state.messages[state.messages.length - 2];
     console.log(String(finalMsg.content));
     return END;
   }
@@ -114,7 +114,6 @@ async function main() {
     console.log("Draft:");
     console.log(String(firstDraft.content));
 
-     
     while (true) {
       const feedback = await askUser(
         "Do you have any feedback for the revision? (type 'approve' to accept, Ctrl+C to exit): ",

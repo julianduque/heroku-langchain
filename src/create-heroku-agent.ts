@@ -1,6 +1,7 @@
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import type { Tool } from "@langchain/core/tools";
 import { HerokuAgent } from "./heroku-agent.js";
+import type { HerokuAgentToolDefinition } from "./types.js";
 import type { HerokuAgentFields } from "./types.js";
 
 /**
@@ -20,6 +21,18 @@ export function createHerokuAgent(
   fields?: HerokuAgentFields,
   tools: Tool[] = [],
 ) {
-  const llm = new HerokuAgent(fields);
-  return createReactAgent({ llm, tools });
+  // Create base agent
+  let llm = new HerokuAgent(fields);
+
+  // If server-side tools are configured on the agent, bind them so we register
+  // local no-op counterparts to satisfy LangGraph tool execution.
+  const serverTools: HerokuAgentToolDefinition[] | undefined = fields?.tools;
+  if (serverTools && serverTools.length > 0) {
+    llm = llm.bindTools(serverTools);
+  }
+
+  // Merge any user-provided local tools with our generated no-op tools
+  const mergedTools: Tool[] = [...tools, ...llm.getLocalTools()];
+
+  return createReactAgent({ llm, tools: mergedTools });
 }

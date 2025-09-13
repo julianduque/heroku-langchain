@@ -12,6 +12,8 @@ import {
   RunnablePassthrough,
   RunnableSequence,
 } from "@langchain/core/runnables";
+import { DynamicStructuredTool, StructuredTool } from "@langchain/core/tools";
+import type { Tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import {
@@ -123,6 +125,10 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
   protected maxTokensPerRequest?: number;
   protected tools?: any[];
   protected streamUsage?: boolean; // Explicitly tell BaseChatModel to use _stream
+  // Queue of server-executed tool results per tool name
+  private toolResultQueues: Map<string, any[]> = new Map();
+  // Locally bound no-op tools that surface server results
+  private _localNoopTools: StructuredTool[] = [];
 
   /**
    * Returns the LangChain identifier for this agent class.
@@ -251,6 +257,8 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
     const additional_kwargs: Record<string, any> = {};
     let tool_calls: any[] = [];
     let tool_results: any = undefined;
+    let sawToolCalls = false;
+    let sawToolResults = false;
 
     for await (const chunk of stream) {
       if (chunk.content) {
@@ -272,18 +280,29 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
       if (chunk.response_metadata) {
         if (chunk.response_metadata.tool_calls) {
           tool_calls = chunk.response_metadata.tool_calls;
+          if (tool_calls.length > 0) sawToolCalls = true;
         }
         if (chunk.response_metadata.tool_results) {
           tool_results = chunk.response_metadata.tool_results;
+          sawToolResults = true;
         }
       }
 
       finalAIMessageChunk = chunk;
     }
 
+    // Semantics:
+    // - If tool calls were emitted but no tool results observed, return empty content + tool_calls
+    //   to let upstream executors run tools locally (and attach ToolMessage).
+    // - If tool results were observed, tools already ran server-side. Return final content and
+    //   clear tool_calls to avoid triggering another tool execution loop.
+    const shouldTriggerLocalTools = sawToolCalls && !sawToolResults;
     const message = new AIMessage({
-      content: aggregatedContent,
-      tool_calls: tool_calls.length > 0 ? tool_calls : undefined,
+      content: shouldTriggerLocalTools ? "" : aggregatedContent,
+      tool_calls:
+        shouldTriggerLocalTools && tool_calls.length > 0
+          ? tool_calls
+          : undefined,
       additional_kwargs: additional_kwargs,
     });
 
@@ -336,7 +355,7 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
       max_tokens_per_inference_request: params.max_tokens_per_inference_request,
       stop: params.stop,
       top_p: params.top_p,
-      tools: params.tools,
+      tools: this.tools,
       metadata: params.metadata,
       session_id: params.sessionId,
       ...params.additionalKwargs,
@@ -502,6 +521,14 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
             const toolCompletionData = eventDataJSON.choices?.[0]?.message;
 
             if (toolCompletionData) {
+              // Queue server tool result by tool name for local no-op tools to consume
+              try {
+                this.enqueueServerToolResult(
+                  toolCompletionData.name,
+                  toolCompletionData.content,
+                );
+              } catch {}
+
               // Find the original tool definition for enhanced logging
               const originalTool = this.tools?.find((tool: any) => {
                 if (
@@ -655,6 +682,19 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
    * Bind agent tools (heroku_tool or mcp) to this instance.
    */
   bindTools(tools: any[]): HerokuAgent {
+    // Merge and deduplicate server-side tool definitions by type+name
+    const existing = this.tools ?? [];
+    const incoming = Array.isArray(tools) ? tools : [];
+    const merged = [...existing, ...incoming];
+    const seen = new Set<string>();
+    const deduped = merged.filter((t: any) => {
+      const key = `${t?.type}:${t?.name}`;
+      if (!t?.type || !t?.name) return false;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     const boundInstance = new HerokuAgent({
       model: this.model,
       temperature: this.temperature,
@@ -665,9 +705,49 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
       apiUrl: this.apiUrl,
       maxRetries: this.maxRetries,
       timeout: this.timeout,
-      tools: [...(this.tools ?? []), ...(tools ?? [])],
+      tools: deduped,
       additionalKwargs: this.additionalKwargs,
     });
+    // Build local no-op tool wrappers that return server results
+    const incomingForNoops = Array.isArray(tools) ? tools : [];
+    const newNoops: StructuredTool[] = incomingForNoops
+      .filter(
+        (t: any) =>
+          t &&
+          (t.type === "heroku_tool" || t.type === "mcp") &&
+          typeof t.name === "string",
+      )
+      .map((t: any) => {
+        const name = t.name as string;
+        // Try to infer schema from heroku_tool.runtime_params.tool_params.parameters
+        let schema: any = undefined;
+        if (
+          t.type === "heroku_tool" &&
+          t.runtime_params?.tool_params?.parameters
+        ) {
+          schema = t.runtime_params.tool_params.parameters;
+        }
+        const tool = new DynamicStructuredTool({
+          name,
+          description:
+            t.description ||
+            (t.type === "mcp"
+              ? "MCP tool executed on the server. Locally returns the server-provided result (noop)."
+              : "Heroku tool executed on the server. Locally returns the server-provided result (noop)."),
+          schema: schema ?? (z.object({}).passthrough() as any),
+          func: async (_args: Record<string, any>) => {
+            const result = boundInstance.consumeServerToolResult(name);
+            // If no result is queued, return a neutral message to avoid loops
+            return result ?? "";
+          },
+        });
+        return tool as StructuredTool;
+      });
+    boundInstance._localNoopTools = [
+      ...(this._localNoopTools ?? []),
+      ...newNoops,
+    ];
+
     return boundInstance;
   }
 
@@ -792,5 +872,27 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
       { raw: prependInstruction.pipe(this) },
       parsedWithFallback,
     ]) as any;
+  }
+
+  /** Get the locally bound no-op LangChain tools mirroring server tools. */
+  public getLocalTools(): Tool[] {
+    return this._localNoopTools as unknown as Tool[];
+  }
+
+  /** Push a server-provided tool result into the local queue for a tool name */
+  protected enqueueServerToolResult(toolName: string | undefined, result: any) {
+    if (!toolName) return;
+    const q = this.toolResultQueues.get(toolName) ?? [];
+    q.push(result);
+    this.toolResultQueues.set(toolName, q);
+  }
+
+  /** Consume the oldest queued server tool result for a tool name */
+  protected consumeServerToolResult(toolName: string): any | null {
+    const q = this.toolResultQueues.get(toolName) ?? [];
+    if (q.length === 0) return null;
+    const value = q.shift();
+    this.toolResultQueues.set(toolName, q);
+    return value;
   }
 }
