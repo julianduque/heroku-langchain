@@ -1,19 +1,23 @@
-import {
-  BaseChatModel,
-  BaseChatModelParams,
-} from "@langchain/core/language_models/chat_models";
+import { BaseChatModelParams } from "@langchain/core/language_models/chat_models";
 import {
   BaseMessage,
   AIMessage,
   AIMessageChunk,
+  SystemMessage,
 } from "@langchain/core/messages";
 import { ChatResult, ChatGeneration } from "@langchain/core/outputs";
 import { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager";
 import {
+  RunnableLambda,
+  RunnablePassthrough,
+  RunnableSequence,
+} from "@langchain/core/runnables";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import {
   HerokuAgentFields,
   HerokuAgentCallOptions,
   HerokuAgentStreamRequest,
-  // Import Agent SSE event types
   HerokuAgentToolErrorEvent,
   HerokuAgentAgentErrorEvent,
 } from "./types.js";
@@ -23,6 +27,7 @@ import {
   HerokuApiError,
   parseHerokuSSE,
 } from "./common.js";
+import { HerokuModel } from "./model.js";
 
 /**
  * **HerokuAgent** - Heroku Managed Inference Agent Integration
@@ -114,20 +119,10 @@ import {
  * @see {@link HerokuAgentCallOptions} for runtime call options
  * @see [Heroku Agent API Documentation](https://devcenter.heroku.com/articles/heroku-inference-api-v1-agents-heroku)
  */
-export class HerokuAgent extends BaseChatModel<HerokuAgentCallOptions> {
-  protected model: string;
-  protected temperature?: number;
+export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
   protected maxTokensPerRequest?: number;
-  protected stop?: string[];
-  protected topP?: number;
   protected tools?: any[];
-  protected apiKey?: string;
-  protected apiUrl?: string;
-  protected maxRetries?: number;
-  protected timeout?: number;
-  protected streaming?: boolean; // For consistency, though agent might always stream or have specific stream endpoint
   protected streamUsage?: boolean; // Explicitly tell BaseChatModel to use _stream
-  protected additionalKwargs?: Record<string, any>;
 
   /**
    * Returns the LangChain identifier for this agent class.
@@ -175,34 +170,12 @@ export class HerokuAgent extends BaseChatModel<HerokuAgentCallOptions> {
    */
   constructor(fields?: HerokuAgentFields) {
     super(fields ?? {});
-
-    const modelFromEnv =
-      typeof process !== "undefined" &&
-      process.env &&
-      process.env.INFERENCE_MODEL_ID;
-    this.model = fields?.model || modelFromEnv || "";
-    if (!this.model) {
-      throw new Error(
-        "Heroku model ID not found. Please set it in the constructor, " +
-          "or set the INFERENCE_MODEL_ID environment variable.",
-      );
-    }
-
-    this.temperature = fields?.temperature ?? 1.0;
     this.maxTokensPerRequest = fields?.maxTokensPerRequest;
-    this.stop = fields?.stop;
-    this.topP = fields?.topP ?? 0.999;
-    this.tools = fields?.tools; // Assuming tools are passed in constructor
-
-    this.apiKey = fields?.apiKey;
-    this.apiUrl = fields?.apiUrl;
-    this.maxRetries = fields?.maxRetries ?? 2;
-    this.timeout = fields?.timeout;
+    this.tools = fields?.tools;
     // Agent API is always streaming, so set this to true.
     this.streaming = true;
     // Set streamUsage to false so stream() calls _stream() directly to preserve heroku_agent_event
     this.streamUsage = false;
-    this.additionalKwargs = fields?.additionalKwargs ?? {};
   }
 
   /**
@@ -368,71 +341,16 @@ export class HerokuAgent extends BaseChatModel<HerokuAgentCallOptions> {
       session_id: params.sessionId,
       ...params.additionalKwargs,
     };
-    Object.keys(requestPayload).forEach(
-      (key) =>
-        (requestPayload as any)[key] === undefined &&
-        delete (requestPayload as any)[key],
+    this.cleanUndefined(requestPayload as any);
+    const response = await this.postWithRetries(
+      herokuConfig.apiUrl,
+      herokuConfig.apiKey,
+      requestPayload as any,
     );
-
-    let response: Response | undefined = undefined;
-    let attempt = 0;
-    const maxRetries = this.maxRetries ?? 2;
-    let lastError: Error | undefined;
-    let successfulResponse = false;
-
-    while (attempt <= maxRetries) {
-      try {
-        const abortController = new AbortController();
-        let timeoutId: NodeJS.Timeout | undefined;
-        if (this.timeout) {
-          timeoutId = setTimeout(() => abortController.abort(), this.timeout);
-        }
-
-        const currentResponse = await fetch(herokuConfig.apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${herokuConfig.apiKey}`,
-          },
-          body: JSON.stringify(requestPayload),
-          signal: abortController.signal,
-        });
-
-        if (timeoutId) clearTimeout(timeoutId);
-        response = currentResponse;
-
-        if (response.ok) {
-          successfulResponse = true;
-          break;
-        }
-        if (response.status >= 400 && response.status < 500) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ message: response!.statusText }));
-          lastError = new HerokuApiError(
-            `Heroku Agent API stream request failed: ${errorData.message || response.statusText}`,
-            response.status,
-            errorData,
-          );
-          break;
-        }
-        lastError = new HerokuApiError(
-          `Heroku Agent API stream request failed with status ${response.status}`,
-          response.status,
-        );
-      } catch (error: any) {
-        lastError = error;
-      }
-      attempt++;
-      if (attempt <= maxRetries)
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-    }
-
-    if (!successfulResponse || !response || !response.body) {
-      if (lastError) throw lastError;
+    if (!response.body) {
       throw new HerokuApiError(
-        "Failed to connect or get a streaming body from Heroku Agent API.",
-        response?.status,
+        "Failed to get a streaming body from Heroku Agent API.",
+        response.status,
       );
     }
 
@@ -731,5 +649,148 @@ export class HerokuAgent extends BaseChatModel<HerokuAgentCallOptions> {
       }
       throw streamError;
     }
+  }
+
+  /**
+   * Bind agent tools (heroku_tool or mcp) to this instance.
+   */
+  bindTools(tools: any[]): HerokuAgent {
+    const boundInstance = new HerokuAgent({
+      model: this.model,
+      temperature: this.temperature,
+      maxTokensPerRequest: this.maxTokensPerRequest,
+      stop: this.stop,
+      topP: this.topP,
+      apiKey: this.apiKey,
+      apiUrl: this.apiUrl,
+      maxRetries: this.maxRetries,
+      timeout: this.timeout,
+      tools: [...(this.tools ?? []), ...(tools ?? [])],
+      additionalKwargs: this.additionalKwargs,
+    });
+    return boundInstance;
+  }
+
+  /**
+   * Create a version of this agent that returns structured output by instructing
+   * the model to produce JSON matching the schema (jsonMode-style).
+   */
+  withStructuredOutput<
+    RunOutput extends Record<string, any> = Record<string, any>,
+    IncludeRaw extends boolean = false,
+  >(
+    schemaOrParams:
+      | z.ZodType<RunOutput>
+      | Record<string, any>
+      | {
+          schema: z.ZodType<RunOutput> | Record<string, any>;
+          name?: string;
+          description?: string;
+          method?: "jsonMode" | "functionCalling";
+          includeRaw?: IncludeRaw;
+        },
+    maybeOptions?: {
+      name?: string;
+      description?: string;
+      method?: "jsonMode" | "functionCalling";
+      includeRaw?: IncludeRaw;
+    },
+  ) {
+    const isStructuredParams = (
+      input: any,
+    ): input is {
+      schema: any;
+      name?: string;
+      description?: string;
+      method?: string;
+      includeRaw?: boolean;
+    } =>
+      input !== undefined &&
+      typeof input === "object" &&
+      !!(input as any).schema;
+
+    let schema: z.ZodType<RunOutput> | Record<string, any>;
+    let name = "extraction";
+    let description: string | undefined;
+    let method: "jsonMode" | "functionCalling" | undefined;
+    const includeRaw =
+      (maybeOptions as any)?.includeRaw ??
+      (isStructuredParams(schemaOrParams)
+        ? (schemaOrParams as any).includeRaw
+        : false);
+
+    if (isStructuredParams(schemaOrParams)) {
+      schema = (schemaOrParams as any).schema;
+      name = (schemaOrParams as any).name ?? name;
+      description = (schemaOrParams as any).description;
+      method = (schemaOrParams as any).method;
+    } else {
+      schema = schemaOrParams as any;
+      name = (maybeOptions as any)?.name ?? name;
+      description = (maybeOptions as any)?.description;
+      method = (maybeOptions as any)?.method;
+    }
+
+    if (method && method !== "jsonMode") {
+      throw new Error(
+        "HerokuAgent only supports 'jsonMode' for structured output.",
+      );
+    }
+
+    const isZodSchema = (input: any): input is z.ZodType<any> =>
+      typeof input?.parse === "function";
+    let zodSchema: z.ZodType<RunOutput> | undefined = undefined;
+    let jsonSchema: Record<string, any> | undefined = undefined;
+    if (isZodSchema(schema)) {
+      zodSchema = schema as any;
+      const asJson = zodToJsonSchema(schema as any, {
+        $refStrategy: "none",
+      }) as Record<string, any>;
+      const { $schema: _ignored, ...clean } = asJson;
+      jsonSchema = clean;
+    } else {
+      const { $schema: _ignored, ...clean } = schema as Record<string, any>;
+      jsonSchema = clean;
+    }
+
+    const instruction = new SystemMessage(
+      `You must reply with ONLY a valid JSON object that strictly conforms to this schema named "${name}":\n${JSON.stringify(jsonSchema, null, 2)}\n` +
+        (description ? `Description: ${description}\n` : "") +
+        `Do not include any extra commentary. If a field is optional but relevant, include it.`,
+    );
+
+    const prependInstruction = RunnableLambda.from(async (input: any) => {
+      if (Array.isArray(input)) return [instruction, ...input];
+      return input;
+    });
+
+    const parseJson = RunnableLambda.from(async (msg: any) => {
+      const content = (msg?.content ??
+        (typeof msg === "string" ? msg : "")) as string;
+      const parsed = JSON.parse(content);
+      if (zodSchema) {
+        return zodSchema.parse(parsed);
+      }
+      return parsed as RunOutput;
+    });
+
+    if (!includeRaw) {
+      return prependInstruction.pipe(this).pipe(parseJson);
+    }
+
+    const parserAssign = RunnablePassthrough.assign({
+      parsed: (input: any) => parseJson.invoke(input.raw),
+    });
+    const parserNone = RunnablePassthrough.assign({
+      parsed: () => null as any,
+    });
+    const parsedWithFallback = parserAssign.withFallbacks({
+      fallbacks: [parserNone],
+    });
+
+    return RunnableSequence.from([
+      { raw: prependInstruction.pipe(this) },
+      parsedWithFallback,
+    ]) as any;
   }
 }

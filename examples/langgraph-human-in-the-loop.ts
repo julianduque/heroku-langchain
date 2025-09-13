@@ -114,7 +114,7 @@ async function main() {
     console.log("Draft:");
     console.log(String(firstDraft.content));
 
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       const feedback = await askUser(
         "Do you have any feedback for the revision? (type 'approve' to accept, Ctrl+C to exit): ",

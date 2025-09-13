@@ -1,7 +1,4 @@
-import {
-  BaseChatModel,
-  BaseChatModelParams,
-} from "@langchain/core/language_models/chat_models";
+import { BaseChatModelParams } from "@langchain/core/language_models/chat_models";
 import {
   BaseMessage,
   AIMessage,
@@ -36,6 +33,7 @@ import {
   HerokuApiError,
   parseHerokuSSE,
 } from "./common.js";
+import { HerokuModel } from "./model.js";
 
 // Types for withStructuredOutput
 /**
@@ -162,19 +160,9 @@ export interface StructuredOutputMethodParams<
  * @see {@link ChatHerokuCallOptions} for runtime call options
  * @see [Heroku Managed Inference API Documentation](https://devcenter.heroku.com/articles/heroku-inference-api-v1-chat-completions)
  */
-export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
-  // Fields to store constructor parameters
-  protected model: string;
-  protected temperature?: number;
+export class ChatHeroku extends HerokuModel<ChatHerokuCallOptions> {
+  // Chat-specific parameters
   protected maxTokens?: number;
-  protected stop?: string[];
-  protected topP?: number;
-  protected apiKey?: string;
-  protected apiUrl?: string;
-  protected maxRetries?: number;
-  protected timeout?: number;
-  protected streaming?: boolean;
-  protected additionalKwargs?: Record<string, any>;
 
   /**
    * Returns the LangChain identifier for this model class.
@@ -208,27 +196,7 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
    */
   constructor(fields?: ChatHerokuFields) {
     super(fields ?? {});
-    const modelFromEnv =
-      typeof process !== "undefined" &&
-      process.env &&
-      process.env.INFERENCE_MODEL_ID;
-    this.model = fields?.model || modelFromEnv || "";
-    if (!this.model) {
-      throw new Error(
-        "Heroku model ID not found. Please set it in the constructor, " +
-          "or set the INFERENCE_MODEL_ID environment variable.",
-      );
-    }
-    this.temperature = fields?.temperature ?? 1.0;
     this.maxTokens = fields?.maxTokens;
-    this.stop = fields?.stop;
-    this.topP = fields?.topP ?? 0.999;
-    this.apiKey = fields?.apiKey;
-    this.apiUrl = fields?.apiUrl;
-    this.maxRetries = fields?.maxRetries ?? 2;
-    this.timeout = fields?.timeout;
-    this.streaming = fields?.streaming ?? fields?.stream ?? false;
-    this.additionalKwargs = fields?.additionalKwargs ?? {};
   }
 
   /**
@@ -512,83 +480,13 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
       ...params.additionalKwargs,
     };
 
-    Object.keys(requestPayload).forEach(
-      (key) =>
-        (requestPayload as any)[key] === undefined &&
-        delete (requestPayload as any)[key],
+    this.cleanUndefined(requestPayload as any);
+
+    const response = await this.postWithRetries(
+      herokuConfig.apiUrl,
+      herokuConfig.apiKey,
+      requestPayload as any,
     );
-
-    let response: Response | undefined = undefined;
-    let attempt = 0;
-    const maxRetries = this.maxRetries ?? 2;
-    let lastError: Error | undefined;
-    let successfulResponse = false;
-
-    while (attempt <= maxRetries) {
-      try {
-        const abortController = new AbortController();
-        let timeoutId: NodeJS.Timeout | undefined;
-        if (this.timeout) {
-          timeoutId = setTimeout(() => abortController.abort(), this.timeout);
-        }
-
-        const currentResponse = await fetch(herokuConfig.apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${herokuConfig.apiKey}`,
-          },
-          body: JSON.stringify(requestPayload),
-          signal: abortController.signal,
-        });
-
-        if (timeoutId) clearTimeout(timeoutId);
-        response = currentResponse;
-
-        if (response.ok) {
-          successfulResponse = true;
-          break;
-        }
-
-        if (response.status >= 400 && response.status < 500) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ message: response!.statusText }));
-          lastError = new HerokuApiError(
-            `Heroku API request failed with status ${response.status}: ${errorData.message || response.statusText}`,
-            response.status,
-            errorData,
-          );
-          break;
-        }
-
-        lastError = new HerokuApiError(
-          `Heroku API request failed with status ${response.status}: ${response.statusText}`,
-          response.status,
-        );
-      } catch (error: any) {
-        lastError = error;
-      }
-
-      attempt++;
-      if (attempt <= maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-      }
-    }
-
-    if (!successfulResponse || !response) {
-      if (lastError instanceof HerokuApiError) throw lastError;
-      if (lastError)
-        throw new HerokuApiError(
-          `Failed to connect to Heroku API after ${maxRetries + 1} attempts: ${lastError.message}`,
-          response?.status,
-          lastError,
-        );
-      throw new HerokuApiError(
-        "Heroku API request failed after all retries.",
-        response?.status,
-      );
-    }
 
     const herokuResponse: HerokuChatCompletionResponse = await response.json();
     const choice = herokuResponse.choices[0];
@@ -677,67 +575,16 @@ export class ChatHeroku extends BaseChatModel<ChatHerokuCallOptions> {
       tool_choice: herokuToolChoice,
       ...params.additionalKwargs,
     };
-    Object.keys(requestPayload).forEach(
-      (key) =>
-        (requestPayload as any)[key] === undefined &&
-        delete (requestPayload as any)[key],
+    this.cleanUndefined(requestPayload as any);
+    const response = await this.postWithRetries(
+      herokuConfig.apiUrl,
+      herokuConfig.apiKey,
+      requestPayload as any,
     );
-
-    let response: Response | undefined = undefined;
-    let attempt = 0;
-    const maxRetries = this.maxRetries ?? 2;
-    let lastError: Error | undefined;
-    let successfulResponse = false;
-
-    // Simplified retry for _stream. More complex retry is in _generate for invoke.
-    while (attempt <= maxRetries) {
-      try {
-        const abortController = new AbortController();
-        if (this.timeout)
-          setTimeout(() => abortController.abort(), this.timeout);
-
-        const currentResponse = await fetch(herokuConfig.apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${herokuConfig.apiKey}`,
-          },
-          body: JSON.stringify(requestPayload),
-          signal: abortController.signal,
-        });
-        response = currentResponse;
-        if (response.ok) {
-          successfulResponse = true;
-          break;
-        }
-        if (response.status >= 400 && response.status < 500) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ message: response!.statusText }));
-          lastError = new HerokuApiError(
-            `Heroku API request failed: ${errorData.message || response.statusText}`,
-            response.status,
-            errorData,
-          );
-          break;
-        }
-        lastError = new HerokuApiError(
-          `Heroku API request failed with status ${response.status}`,
-          response.status,
-        );
-      } catch (error: any) {
-        lastError = error;
-      }
-      attempt++;
-      if (attempt <= maxRetries)
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-    }
-
-    if (!successfulResponse || !response || !response.body) {
-      if (lastError) throw lastError;
+    if (!response.body) {
       throw new HerokuApiError(
-        "Failed to connect or get a streaming body from Heroku API.",
-        response?.status,
+        "Failed to get a streaming body from Heroku API.",
+        response.status,
       );
     }
 

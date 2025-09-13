@@ -27,11 +27,12 @@ async function main() {
     "   Set HEROKU_APP_NAME environment variable to use a different app.",
   );
 
-  const agentExecutor = new HerokuAgent({
+
+  const agent = createHerokuAgent({
     tools: tools,
   });
 
-  const agent = createHerokuAgent({
+  const agentModel = new HerokuAgent({
     tools: tools,
   });
 
@@ -50,7 +51,7 @@ async function main() {
 
     console.log("\n🔧 === Heroku Tool Execution ===");
 
-    const response = await agentExecutor.invoke([
+    const response = await agentModel.invoke([
       new HumanMessage(
         "What time is it on the app server? Please use the available tools to check.",
       ),
@@ -59,7 +60,7 @@ async function main() {
 
     // First interaction - simple streaming
     console.log("\n🔄 HerokuAgent Stream...");
-    const stream = await agentExecutor.stream([
+    const stream = await agentModel.stream([
       new HumanMessage(
         "What time is it on the app server? Please use the available tools to check.",
       ),
