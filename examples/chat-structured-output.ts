@@ -16,6 +16,16 @@ async function main() {
   ]);
 
   console.log(res);
+
+  const structuredWithRaw = llm.withStructuredOutput(JokeSchema, {
+    includeRaw: true,
+  });
+
+  const resWithRaw = await structuredWithRaw.invoke([
+    new HumanMessage("Tell me a short, clean programming joke."),
+  ]);
+
+  console.log(resWithRaw);
 }
 
 main().catch(console.error);

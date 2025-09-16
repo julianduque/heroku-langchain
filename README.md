@@ -1,4 +1,4 @@
-# Heroku Mia LangChain SDK
+# Heroku AI LangChain SDK
 
 This SDK provides a convenient way to interact with Heroku's AI services, specifically for chat completions, agent functionalities, and text embeddings.
 
@@ -14,7 +14,7 @@ This SDK includes three main classes:
 
 - **`ChatHeroku`**: Chat completions with support for function calling, structured outputs, and streaming
 - **`HerokuAgent`**: Autonomous agents with access to Heroku tools and MCP (Model Context Protocol) tools
-- **`HerokuMiaEmbeddings`**: Text embeddings for similarity search, RAG applications, and semantic understanding
+- **`HerokuEmbeddings`**: Text embeddings for similarity search, RAG applications, and semantic understanding
 
 ## Basic Usage
 
@@ -53,13 +53,13 @@ main();
 
 ### Text Embeddings
 
-Here's how to use the `HerokuMiaEmbeddings` class for generating text embeddings:
+Here's how to use the `HerokuEmbeddings` class for generating text embeddings:
 
 ```typescript
-import { HerokuMiaEmbeddings } from "heroku-langchain";
+import { HerokuEmbeddings } from "heroku-langchain";
 
 async function main() {
-  const embeddings = new HerokuMiaEmbeddings({
+  const embeddings = new HerokuEmbeddings({
     model: "cohere-embed-multilingual",
     // Optional: set API credentials explicitly
     // apiKey: process.env.EMBEDDING_KEY,
@@ -304,6 +304,7 @@ Complete working examples are available in the `examples/` folder, organized by 
 
 - `examples/heroku-agent-example.ts` — Using Heroku tools to execute commands on apps
 - `examples/heroku-agent-example-mcp.ts` — Using MCP tools with agents
+- `examples/heroku-create-agent-example.ts` — Using createHerokuAgent to create a LangGraph ReAct agent
 
 ### Text Embeddings (`HerokuEmbeddings`)
 
@@ -312,8 +313,9 @@ Complete working examples are available in the `examples/` folder, organized by 
 ### Advanced Integrations
 
 - `examples/langraph.ts` — Multi-agent workflow with LangGraph
-- `examples/heroku-agent-langgraph.ts` — CAgent workflow with LangGraph and Heroku Tools
+- `examples/heroku-agent-langgraph.ts` — Agent workflow with LangGraph and Heroku Tools
 - `examples/langraph-mcp.ts` — LangGraph with MCP tools for database interactions
+- `examples/langgraph-human-in-the-loop.ts` — LangGraph with human in the loop interruption
 
 ### Running Examples
 
@@ -349,7 +351,7 @@ For more detailed information on the available classes, methods, and types, plea
 
 - `ChatHeroku`: For chat completions with function calling and structured output support.
 - `HerokuAgent`: For agent-based interactions with Heroku and MCP tools.
-- `HerokuMiaEmbeddings`: For generating text embeddings and semantic search.
+- `HerokuEmbeddings`: For generating text embeddings and semantic search.
 - `types.ts`: Contains all relevant TypeScript type definitions.
 
 ## Testing
@@ -360,7 +362,7 @@ This project uses Node.js's native test runner with TypeScript support. The test
 - Type definitions and interfaces
 - ChatHeroku class functionality
 - HerokuAgent class functionality
-- HerokuMiaEmbeddings class functionality
+- HerokuEmbeddings class functionality
 - Integration tests
 
 ### Running Tests
