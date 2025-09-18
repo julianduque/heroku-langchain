@@ -296,6 +296,7 @@ Complete working examples are available in the `examples/` folder, organized by 
 - `examples/chat-basic.ts` — Basic chat completion
 - `examples/chat-custom-tool.ts` — Custom weather tool with function calling
 - `examples/chat-structured-output.ts` — Structured output with Zod schemas
+- `examples/chat-structured-output-advanced.ts` — Structured output with complex Zod schemas
 - `examples/chat-wikipedia-tool.ts` — Tool integration with Wikipedia search
 - `examples/chat-lcel-prompt.ts` — LCEL with prompt templates
 - `examples/chat-runnable-sequence.ts` — Chaining with RunnableSequence

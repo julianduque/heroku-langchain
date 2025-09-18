@@ -10,12 +10,8 @@ import { StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { JsonOutputKeyToolsParser } from "@langchain/core/output_parsers/openai_tools";
-import {
-  Runnable,
-  RunnablePassthrough,
-  RunnableSequence,
-  RunnableLambda,
-} from "@langchain/core/runnables";
+import { OutputParserException } from "@langchain/core/output_parsers";
+import { Runnable, RunnableLambda } from "@langchain/core/runnables";
 import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
 import { SystemMessage } from "@langchain/core/messages";
 import {
@@ -856,15 +852,29 @@ export class ChatHeroku extends HerokuModel<ChatHerokuCallOptions> {
       keyName: functionName,
       ...(zodSchemaForValidation ? { zodSchema: zodSchemaForValidation } : {}),
     });
+
+    const schemaForPrompt = (() => {
+      try {
+        return JSON.stringify(parametersJson, null, 2);
+      } catch (_err) {
+        return undefined;
+      }
+    })();
+
+    const instructionText = [
+      `You must provide the result by calling the function "${functionName}" and nothing else.`,
+      schemaForPrompt
+        ? `The arguments MUST strictly match this JSON schema:\n${schemaForPrompt}`
+        : `The arguments MUST strictly match the provided JSON schema.`,
+      "Only use the field names and data types allowed by the schema. Do not invent alternatives or nested structures that are not explicitly permitted.",
+      "Return solely the tool call with fully specified arguments and no extra commentary.",
+    ].join("\n");
+
     // Prepend an instruction system message to strongly nudge function calling
-    const instruction = new SystemMessage(
-      `You must provide the result by calling the function "${functionName}" with arguments that strictly conform to the provided JSON schema. ` +
-        `Only return the function call with valid, fully-specified arguments. Do not include any extra text.`,
-    );
+    const instruction = new SystemMessage(instructionText);
 
     const prependInstruction = RunnableLambda.from(
       async (input: BaseLanguageModelInput) => {
-        // If input is an array of messages, prepend our instruction
         if (Array.isArray(input)) {
           return [instruction, ...input];
         }
@@ -872,31 +882,125 @@ export class ChatHeroku extends HerokuModel<ChatHerokuCallOptions> {
       },
     );
 
+    const extractMessage = (value: unknown): string | undefined => {
+      if (typeof value === "string") return value;
+      if (
+        typeof value === "object" &&
+        value !== null &&
+        "message" in value &&
+        typeof (value as any).message === "string"
+      ) {
+        return (value as any).message as string;
+      }
+      return undefined;
+    };
+
+    const formatParserError = (error: unknown): string => {
+      const parts = [
+        `The previous attempt to call \"${functionName}\" failed JSON schema validation.`,
+      ];
+      if (error instanceof OutputParserException) {
+        const causeMessage = extractMessage(
+          (error as { cause?: unknown }).cause,
+        );
+        if (causeMessage) {
+          parts.push(`Validation details: ${causeMessage}`);
+        } else if (Array.isArray((error as any).errors)) {
+          parts.push(
+            `Validation details: ${JSON.stringify((error as any).errors)}`,
+          );
+        }
+        if (typeof error.llmOutput === "string" && error.llmOutput.length > 0) {
+          parts.push(
+            `Here is the invalid JSON you produced previously:\n${error.llmOutput}`,
+          );
+        }
+      } else {
+        const genericMessage = extractMessage(error);
+        if (genericMessage) {
+          parts.push(`Validation details: ${genericMessage}`);
+        }
+      }
+      parts.push(
+        `Re-create the \"${functionName}\" function call with arguments that satisfy the schema exactly. Only respond with the corrected function call arguments.`,
+      );
+      return parts.join("\n");
+    };
+
+    const maxParserRetries = 2;
+
+    const invokeWithInstruction = async (
+      originalInput: BaseLanguageModelInput,
+      config?: any,
+    ) => {
+      const prepared = await prependInstruction.invoke(originalInput, config);
+      return llm.invoke(prepared, config);
+    };
+
+    const runStructured = RunnableLambda.from(
+      async (input: BaseLanguageModelInput, config?: any) => {
+        let attempts = 0;
+        let workingInput: BaseLanguageModelInput = input;
+        let lastError: any;
+
+        while (attempts <= maxParserRetries) {
+          const llmResult = await invokeWithInstruction(workingInput, config);
+          try {
+            const parsed = await outputParser.invoke(llmResult, config);
+            return parsed;
+          } catch (err: any) {
+            lastError = err;
+            if (attempts === maxParserRetries) {
+              throw err;
+            }
+            if (Array.isArray(workingInput)) {
+              const correction = formatParserError(err);
+              workingInput = [...workingInput, new SystemMessage(correction)];
+              attempts += 1;
+              continue;
+            }
+            throw err;
+          }
+        }
+
+        throw lastError;
+      },
+    );
+
     if (!includeRaw) {
-      // instruction -> llm -> parse
-      return prependInstruction.pipe(llm).pipe(outputParser);
+      return runStructured;
     }
 
-    // Handle includeRaw case: instruction -> llm, then parse input.raw
-    const parserAssign = RunnablePassthrough.assign({
-      parsed: (input: any, config?: any) =>
-        outputParser.invoke(input.raw, config),
-    });
+    const runStructuredWithRaw = RunnableLambda.from(
+      async (input: BaseLanguageModelInput, config?: any) => {
+        let attempts = 0;
+        let workingInput: BaseLanguageModelInput = input;
+        let lastError: any;
+        while (attempts <= maxParserRetries) {
+          const llmResult = await invokeWithInstruction(workingInput, config);
+          try {
+            const parsed = await outputParser.invoke(llmResult, config);
+            return { raw: llmResult, parsed };
+          } catch (err: any) {
+            lastError = err;
+            if (attempts === maxParserRetries) {
+              return { raw: llmResult, parsed: null as any };
+            }
+            if (Array.isArray(workingInput)) {
+              const correction = formatParserError(err);
+              workingInput = [...workingInput, new SystemMessage(correction)];
+              attempts += 1;
+              continue;
+            }
+            return { raw: llmResult, parsed: null as any };
+          }
+        }
 
-    const parserNone = RunnablePassthrough.assign({
-      parsed: () => null as any,
-    });
-
-    const parsedWithFallback = parserAssign.withFallbacks({
-      fallbacks: [parserNone],
-    });
-
-    return RunnableSequence.from([
-      {
-        raw: prependInstruction.pipe(llm),
+        return { raw: null as any, parsed: null as any };
       },
-      parsedWithFallback,
-    ]) as any;
+    );
+
+    return runStructuredWithRaw as any;
   }
 
   /**
