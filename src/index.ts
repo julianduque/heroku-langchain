@@ -81,7 +81,10 @@ export type {
  * @see {@link HerokuAgent} for detailed documentation
  */
 export { HerokuAgent } from "./heroku-agent.js";
-export { createHerokuAgent } from "./create-heroku-agent.js";
+export {
+  createHerokuAgent,
+  type CreateHerokuAgentOptions,
+} from "./create-heroku-agent.js";
 
 /**
  * @deprecated Use HerokuAgent instead.

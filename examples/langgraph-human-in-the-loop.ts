@@ -101,7 +101,7 @@ async function main() {
   const initialTask = "Write a short bio for Ada Lovelace.";
   let values = await graph.invoke(
     { messages: [new HumanMessage(initialTask)] },
-    { configurable: { thread_id: threadId } },
+    { context: { thread_id: threadId } },
   );
 
   // Step 2: Interactive loop – show question, revision, input, revision, ...
@@ -120,7 +120,7 @@ async function main() {
       );
 
       values = await graph.invoke(new Command({ resume: feedback }), {
-        configurable: { thread_id: threadId },
+        context: { thread_id: threadId },
       });
 
       if (isInterrupted(values)) {

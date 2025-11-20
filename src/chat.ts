@@ -9,7 +9,6 @@ import { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager";
 import { StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { JsonOutputKeyToolsParser } from "@langchain/core/output_parsers/openai_tools";
 import { OutputParserException } from "@langchain/core/output_parsers";
 import { Runnable, RunnableLambda } from "@langchain/core/runnables";
 import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
@@ -846,12 +845,90 @@ export class ChatHeroku extends HerokuModel<ChatHerokuCallOptions> {
       };
     };
 
-    // Create output parser (validate with zod when available)
-    const outputParser = new JsonOutputKeyToolsParser<RunOutput>({
-      returnSingle: true,
-      keyName: functionName,
-      ...(zodSchemaForValidation ? { zodSchema: zodSchemaForValidation } : {}),
-    });
+    const buildParserError = (
+      message: string,
+      error?: unknown,
+      llmOutput?: string,
+    ): OutputParserException => {
+      const parserError = new OutputParserException(message);
+      if (error !== undefined) {
+        (parserError as any).cause = error;
+      }
+      if (llmOutput !== undefined) {
+        (parserError as any).llmOutput = llmOutput;
+      }
+      return parserError;
+    };
+
+    const parseToolCallResult = async (
+      llmResult: BaseMessage,
+    ): Promise<RunOutput> => {
+      if (!(llmResult instanceof AIMessage)) {
+        throw buildParserError(
+          `Expected an AIMessage with a tool call named "${functionName}".`,
+          undefined,
+          typeof llmResult.content === "string"
+            ? llmResult.content
+            : JSON.stringify(llmResult.content),
+        );
+      }
+
+      const toolCalls = llmResult.tool_calls ?? [];
+      const matchingToolCall =
+        toolCalls.find((tc) => tc.name === functionName) || toolCalls[0];
+
+      if (!matchingToolCall) {
+        throw buildParserError(
+          `No tool call named "${functionName}" was returned.`,
+          undefined,
+          typeof llmResult.content === "string"
+            ? llmResult.content
+            : JSON.stringify(llmResult.content),
+        );
+      }
+
+      const argsValue =
+        (matchingToolCall as any).args ??
+        (matchingToolCall as any).function?.arguments;
+
+      if (argsValue === undefined) {
+        throw buildParserError(
+          `Tool call "${functionName}" did not include arguments.`,
+          undefined,
+          JSON.stringify(matchingToolCall),
+        );
+      }
+
+      let parsedArgs: any;
+      try {
+        parsedArgs =
+          typeof argsValue === "string"
+            ? JSON.parse(argsValue)
+            : argsValue;
+      } catch (err: any) {
+        throw buildParserError(
+          `Failed to parse tool arguments for "${functionName}" as JSON.`,
+          err,
+          typeof argsValue === "string"
+            ? argsValue
+            : JSON.stringify(argsValue),
+        );
+      }
+
+      if (zodSchemaForValidation) {
+        try {
+          parsedArgs = await zodSchemaForValidation.parseAsync(parsedArgs);
+        } catch (err: any) {
+          throw buildParserError(
+            `Failed to parse structured tool output for "${functionName}".`,
+            err,
+            JSON.stringify(parsedArgs),
+          );
+        }
+      }
+
+      return parsedArgs as RunOutput;
+    };
 
     const schemaForPrompt = (() => {
       try {
@@ -946,7 +1023,7 @@ export class ChatHeroku extends HerokuModel<ChatHerokuCallOptions> {
         while (attempts <= maxParserRetries) {
           const llmResult = await invokeWithInstruction(workingInput, config);
           try {
-            const parsed = await outputParser.invoke(llmResult, config);
+            const parsed = await parseToolCallResult(llmResult);
             return parsed;
           } catch (err: any) {
             lastError = err;
@@ -979,7 +1056,7 @@ export class ChatHeroku extends HerokuModel<ChatHerokuCallOptions> {
         while (attempts <= maxParserRetries) {
           const llmResult = await invokeWithInstruction(workingInput, config);
           try {
-            const parsed = await outputParser.invoke(llmResult, config);
+            const parsed = await parseToolCallResult(llmResult);
             return { raw: llmResult, parsed };
           } catch (err: any) {
             lastError = err;

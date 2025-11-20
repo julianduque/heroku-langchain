@@ -55,9 +55,9 @@ async function main() {
         process.stdout.write(chunk.content as string);
       }
 
-      // Show tool calls if present in response_metadata (where Heroku puts them)
-      if (chunk.response_metadata?.tool_calls) {
-        for (const toolCall of chunk.response_metadata.tool_calls) {
+      const chunkToolCalls = chunk.tool_calls ?? chunk.response_metadata?.tool_calls;
+      if (chunkToolCalls?.length) {
+        for (const toolCall of chunkToolCalls) {
           console.log(
             `\n⚡ Agent executed tool: ${toolCall.name} (${toolCall.id})`,
           );
@@ -79,12 +79,11 @@ async function main() {
         );
       }
 
-      // Show tool results from response_metadata as well
-      if (chunk.response_metadata?.tool_results) {
-        console.log(
-          "\n📋 Tool Results Details:",
-          JSON.stringify(chunk.response_metadata.tool_results, null, 2),
-        );
+      const toolResults =
+        chunk.response_metadata?.tool_results ?? chunk.tool_call_chunks;
+      if (toolResults?.length) {
+        console.log("\n📋 Tool Results Details:");
+        console.log(JSON.stringify(toolResults, null, 2));
       }
     }
 

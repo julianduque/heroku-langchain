@@ -1,12 +1,13 @@
-import { createHerokuAgent } from "../src"; // Adjusted for local example structure
+import { createAgent, createMiddleware } from "langchain";
 import { HumanMessage } from "@langchain/core/messages";
-import { HerokuAgentToolDefinition } from "../src/types"; // Assuming types are exported from ../src/types
+import { HerokuAgent } from "../src"; // Adjusted for local example structure
+import { HerokuAgentToolDefinition } from "../src/types";
 
 async function main() {
-  console.log("🤖 Running createHerokuAgent Example...");
+  console.log("🤖 Running createAgent + HerokuAgent Example...");
 
-  const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo"; // Change this to your actual app name
-  const tools: HerokuAgentToolDefinition[] = [
+  const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
+  const herokuTools: HerokuAgentToolDefinition[] = [
     {
       type: "heroku_tool",
       name: "dyno_run_command",
@@ -27,15 +28,38 @@ async function main() {
     "   Set HEROKU_APP_NAME environment variable to use a different app.",
   );
 
-  const agent = createHerokuAgent({
-    tools: tools,
+  // Bind Heroku server tools so createAgent can mirror them as local tool stubs
+  let model = new HerokuAgent({ tools: herokuTools });
+  model = model.bindTools(herokuTools);
+
+  // Replace pre/post model hooks with LangChain v1 middleware
+  const loggingMiddleware = createMiddleware({
+    beforeModel: async ({ systemPrompt }) => {
+      console.log("🧠 system prompt", systemPrompt ?? "<default>");
+    },
+    wrapToolCall: async (request, handler) => {
+      console.log(`🛠️  executing tool: ${request.tool.name}`);
+      const result = await handler(request);
+      console.log(`✅ tool ${request.tool.name} finished.`);
+      return result;
+    },
+  });
+
+  const agent = createAgent({
+    model,
+    tools: model.getLocalTools(),
+    systemPrompt:
+      "You are a Heroku operator. Use dyno_run_command to inspect the target app.",
+    middleware: [loggingMiddleware],
   });
 
   try {
-    console.log("\n🔧 === Heroku ReaAct Agent ===");
+    console.log("\n🔧 === Heroku createAgent Demo ===");
     const response = await agent.invoke({
       messages: [
-        new HumanMessage("What kernel version is running on the app server?"),
+        new HumanMessage(
+          "What kernel version is running on the app server?",
+        ),
       ],
     });
     console.log(response.messages[response.messages.length - 1].content);

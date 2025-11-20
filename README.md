@@ -4,6 +4,8 @@ This SDK provides a convenient way to interact with Heroku's AI services, specif
 
 ## Installation
 
+> **Node.js 20+ is required.** The SDK targets LangChain v1 APIs.
+
 ```bash
 pnpm install heroku-langchain
 ```

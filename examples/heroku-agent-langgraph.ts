@@ -268,14 +268,17 @@ const run = async () => {
       console.log(`\n--- Step ${index + 1} ---`);
       console.log(msg.content);
 
-      if (msg.response_metadata?.tool_calls) {
-        console.log(
-          "\n🛠️  Tool Calls:",
-          JSON.stringify(msg.response_metadata.tool_calls, null, 2),
-        );
+      const toolCalls = (msg as any).tool_calls ?? msg.response_metadata?.tool_calls;
+      if (toolCalls?.length) {
+        console.log("\n🛠️  Tool Calls:", JSON.stringify(toolCalls, null, 2));
       }
-      if (msg.additional_kwargs?.tool_result) {
-        console.log("\n📊 Tool Result:", msg.additional_kwargs.tool_result);
+
+      const toolResults =
+        msg.additional_kwargs?.tool_result ??
+        msg.response_metadata?.tool_results ??
+        (msg as any).tool_call_chunks;
+      if (toolResults) {
+        console.log("\n📊 Tool Result:", toolResults);
       }
     }
   });
