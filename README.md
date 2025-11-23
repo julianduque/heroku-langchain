@@ -4,7 +4,7 @@ This SDK provides a convenient way to interact with Heroku's AI services, specif
 
 ## Installation
 
-> **Node.js 20+ is required.** The SDK targets LangChain v1 APIs.
+> **Node.js 20+ is required.**
 
 ```bash
 pnpm install heroku-langchain
@@ -114,54 +114,47 @@ The SDK can utilize the following environment variables:
 
 ### Using Tools
 
-You can bind tools (functions) to the model for more complex interactions.
+You can build an agent with LangChain's `createAgent` helper and attach tools declared with the `tool` helper for richer interactions.
 
 ```typescript
 import { ChatHeroku } from "heroku-langchain";
 import { HumanMessage } from "@langchain/core/messages";
+import { createAgent, tool } from "langchain";
 import { z } from "zod";
-import { StructuredTool } from "@langchain/core/tools";
 
-// Define a simple tool
-class GetWeatherTool extends StructuredTool {
-  name = "get_weather";
-  description = "Gets the current weather for a given location.";
-  schema = z.object({
-    location: z
-      .string()
-      .describe("The city and state, e.g., San Francisco, CA"),
-  });
-
-  async _call(input: z.infer<typeof this.schema>) {
+const getWeather = tool(
+  async ({ location }) => {
     // In a real scenario, you would call a weather API here
-    if (input.location.toLowerCase().includes("san francisco")) {
+    if (location.toLowerCase().includes("san francisco")) {
       return JSON.stringify({ weather: "sunny", temperature: "70F" });
     }
     return JSON.stringify({ weather: "unknown", temperature: "unknown" });
-  }
-}
+  },
+  {
+    name: "get_weather",
+    description: "Gets the current weather for a given location.",
+    schema: z.object({
+      location: z
+        .string()
+        .describe("The city and state, e.g., San Francisco, CA"),
+    }),
+  },
+);
 
 async function main() {
-  const chat = new ChatHeroku({ model: "your-model-id" }).bindTools([
-    new GetWeatherTool(),
-  ]);
+  const model = new ChatHeroku({ model: "your-model-id" });
+  const agent = createAgent({
+    model,
+    tools: [getWeather],
+    systemPrompt:
+      "You are a weather assistant. Call the get_weather tool when needed.",
+  });
 
-  const messages = [
-    new HumanMessage("What's the weather like in San Francisco?"),
-  ];
+  const response = await agent.invoke({
+    messages: [new HumanMessage("What's the weather like in San Francisco?")],
+  });
 
-  try {
-    const response = await chat.invoke(messages);
-    console.log("AI Response:", response);
-
-    // The response might include a tool_calls array if the model decided to use a tool
-    if (response.tool_calls && response.tool_calls.length > 0) {
-      console.log("Tool calls:", response.tool_calls);
-      // Here you would typically execute the tool and send the result back to the model
-    }
-  } catch (error) {
-    console.error("Error:", error);
-  }
+  console.log("AI Response:", response.messages.at(-1)?.content);
 }
 
 main();
@@ -172,12 +165,13 @@ main();
 The `HerokuAgent` class allows for more autonomous interactions with access to Heroku tools and MCP (Model Context Protocol) tools. Here's an example demonstrating agent usage:
 
 ```typescript
-import { HerokuAgent } from "heroku-langchain";
+import { createAgent } from "langchain";
 import { HumanMessage } from "@langchain/core/messages";
+import { HerokuAgent } from "heroku-langchain";
 import { HerokuAgentToolDefinition } from "heroku-langchain/types";
 
 async function agentExample() {
-  console.log("Running HerokuAgent Example...");
+  console.log("Running Heroku createAgent Example...");
 
   const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
   const tools: HerokuAgentToolDefinition[] = [
@@ -201,55 +195,24 @@ async function agentExample() {
     "   Set HEROKU_APP_NAME environment variable to use a different app.",
   );
 
-  const agent = new HerokuAgent({
+  const model = new HerokuAgent();
+  const agent = createAgent({
+    model,
     tools,
+    systemPrompt:
+      "You are a Heroku operator. Prefer dyno_run_command to inspect the target app.",
   });
 
-  try {
-    console.log("\n=== Heroku Tool Execution ===");
-    console.log("\nStreaming HerokuAgent...");
-
-    const stream = await agent.stream([
+  const response = await agent.invoke({
+    messages: [
       new HumanMessage(
         "What time is it on the app server? Please use the available tools to check.",
       ),
-    ]);
+    ],
+  });
 
-    const toolCalls: any[] = [];
-
-    for await (const chunk of stream) {
-      if (chunk.content) {
-        process.stdout.write(chunk.content as string);
-      }
-
-      // Show tool calls if present in response_metadata
-      if (chunk.response_metadata?.tool_calls) {
-        for (const toolCall of chunk.response_metadata.tool_calls) {
-          console.log(
-            `\n🔧 Agent executed tool: ${toolCall.name} (${toolCall.id})`,
-          );
-          console.log(
-            "📋 Tool Call Details:",
-            JSON.stringify(toolCall, null, 2),
-          );
-          toolCalls.push(toolCall);
-        }
-      }
-
-      // Show tool results if present in additional_kwargs
-      if (chunk.additional_kwargs?.tool_result) {
-        const { tool_name, tool_result, tool_call_id } =
-          chunk.additional_kwargs;
-        console.log(
-          `\n🛠️ Tool '${tool_name}' (${tool_call_id}) completed with result: ${tool_result}`,
-        );
-      }
-    }
-
-    console.log(`\n✅ Stream ended. Tool calls executed: ${toolCalls.length}`);
-  } catch (error) {
-    console.error("Error:", error);
-  }
+  const finalMessage = response.messages.at(-1);
+  console.log(finalMessage?.content);
 }
 
 agentExample().catch(console.error);
@@ -260,8 +223,9 @@ agentExample().catch(console.error);
 You can also use MCP (Model Context Protocol) tools with the agent:
 
 ```typescript
-import { HerokuAgent } from "heroku-langchain";
+import { createAgent } from "langchain";
 import { HumanMessage } from "@langchain/core/messages";
+import { HerokuAgent } from "heroku-langchain";
 import { HerokuAgentToolDefinition } from "heroku-langchain/types";
 
 async function mcpExample() {
@@ -272,20 +236,18 @@ async function mcpExample() {
     },
   ];
 
-  const agent = new HerokuAgent({
-    tools: tools,
+  const model = new HerokuAgent();
+  const agent = createAgent({
+    model,
+    tools,
+    systemPrompt: "Answer with help from brave_web_search when needed.",
   });
 
-  const stream = await agent.stream([
-    new HumanMessage("What is new in the world of AI?"),
-  ]);
+  const response = await agent.invoke({
+    messages: [new HumanMessage("What is new in the world of AI?")],
+  });
 
-  for await (const chunk of stream) {
-    if (chunk.content) {
-      process.stdout.write(chunk.content as string);
-    }
-    // Handle tool calls and results as shown in the previous example
-  }
+  console.log(response.messages.at(-1)?.content);
 }
 ```
 
@@ -296,18 +258,20 @@ Complete working examples are available in the `examples/` folder, organized by 
 ### Chat Completions (`ChatHeroku`)
 
 - `examples/chat-basic.ts` — Basic chat completion
-- `examples/chat-custom-tool.ts` — Custom weather tool with function calling
 - `examples/chat-structured-output.ts` — Structured output with Zod schemas
 - `examples/chat-structured-output-advanced.ts` — Structured output with complex Zod schemas
-- `examples/chat-wikipedia-tool.ts` — Tool integration with Wikipedia search
 - `examples/chat-lcel-prompt.ts` — LCEL with prompt templates
 - `examples/chat-runnable-sequence.ts` — Chaining with RunnableSequence
+- `examples/create-agent-wikipedia-tool.ts` — Tool integration with Wikipedia search
+- `examples/create-agent-custom-tool.ts` — Custom weather tool with function calling
+- `examples/create-agent-updates-stream.ts` — Streaming tool execution with createAgent and updates stream mode
 
 ### Agents (`HerokuAgent`)
 
-- `examples/heroku-agent-example.ts` — Using Heroku tools to execute commands on apps
-- `examples/heroku-agent-example-mcp.ts` — Using MCP tools with agents
-- `examples/heroku-create-agent-example.ts` — Using createHerokuAgent to create a LangGraph ReAct agent
+- `examples/create-heroku-agent-basic.ts` — Minimal createAgent wiring for Heroku tools
+- `examples/create-heroku-agent-streaming.ts` — Streaming tool execution with createAgent
+- `examples/create-heroku-agent-mcp.ts` — Using MCP tools with createAgent
+- `examples/create-heroku-agent-structured-output.ts` — Structured output with createAgent
 
 ### Text Embeddings (`HerokuEmbeddings`)
 
@@ -316,9 +280,9 @@ Complete working examples are available in the `examples/` folder, organized by 
 ### Advanced Integrations
 
 - `examples/langraph.ts` — Multi-agent workflow with LangGraph
-- `examples/heroku-agent-langgraph.ts` — Agent workflow with LangGraph and Heroku Tools
 - `examples/langraph-mcp.ts` — LangGraph with MCP tools for database interactions
 - `examples/langgraph-human-in-the-loop.ts` — LangGraph with human in the loop interruption
+- `examples/create-heroku-agent-langgraph.ts` — Agent workflow with LangGraph and Heroku tools
 
 ### Running Examples
 
@@ -342,7 +306,7 @@ npx tsx examples/chat-basic.ts
 npx tsx examples/chat-structured-output.ts
 
 # Run an agent example
-npx tsx examples/heroku-agent-example.ts
+npx tsx examples/create-heroku-agent-basic.ts
 
 # Run the embeddings example
 npx tsx examples/embeddings-basic.ts
@@ -386,9 +350,10 @@ The test files are organized as follows:
 - `test/types.test.ts` - Type definition validation tests
 - `test/chat-heroku.test.ts` - ChatHeroku class tests
 - `test/heroku-agent.test.ts` - HerokuAgent class tests
-- `test/integration.test.ts` - End-to-end integration tests
+- `test/embeddings.test.ts` - HerokuEmbeddings class tests
+- `test/integration/**` - End-to-end integration tests
 
-All tests use environment variable mocking to avoid requiring actual API keys during testing.
+All tests but the integration tests use environment variable mocking to avoid requiring actual API keys during testing.
 
 ## License
 

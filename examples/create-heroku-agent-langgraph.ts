@@ -1,13 +1,17 @@
-import { HumanMessage } from "@langchain/core/messages";
+import { createAgent } from "langchain";
+import { HumanMessage, type BaseMessage } from "@langchain/core/messages";
+import type { ToolCall } from "@langchain/core/messages/tool";
 import {
   END,
   MessagesAnnotation,
   START,
   StateGraph,
+  type CompiledStateGraph,
 } from "@langchain/langgraph";
 import { HerokuAgent } from "../src/index.js";
 import { HerokuAgentToolDefinition } from "../src/types.js";
-import { writeFileSync } from "fs";
+import { writeFileSync } from "node:fs";
+import { Buffer } from "node:buffer";
 
 const tools: HerokuAgentToolDefinition[] = [
   {
@@ -16,18 +20,90 @@ const tools: HerokuAgentToolDefinition[] = [
   },
 ];
 
-const agent = new HerokuAgent({
-  model: "gpt-oss-120b",
+const herokuModel = new HerokuAgent();
+const agent = createAgent({
+  model: herokuModel,
   tools,
+  systemPrompt:
+    "You are a Heroku operator. Use code_exec_python for heavier analysis.",
 });
 
+type WeatherGraphState = (typeof MessagesAnnotation)["State"] & {
+  weather_city?: string;
+};
+
+const getMessageContentText = (message: BaseMessage): string => {
+  const { content } = message;
+  if (typeof content === "string") {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    return content
+      .map((entry) => {
+        if (typeof entry === "string") {
+          return entry;
+        }
+        if (typeof entry === "object" && entry && "text" in entry) {
+          const text = (entry as { text?: unknown }).text;
+          return typeof text === "string" ? text : "";
+        }
+        return "";
+      })
+      .join("\n")
+      .trim();
+  }
+  return "";
+};
+
+const getMessageResponseMetadata = (message: BaseMessage) =>
+  message.response_metadata as
+    | {
+        tool_calls?: unknown;
+        tool_results?: unknown;
+      }
+    | undefined;
+
+const extractMessageToolCalls = (
+  message: BaseMessage,
+): ToolCall[] | undefined => {
+  if (
+    "tool_calls" in message &&
+    Array.isArray((message as { tool_calls?: unknown }).tool_calls)
+  ) {
+    return (message as { tool_calls: ToolCall[] }).tool_calls;
+  }
+  const metadata = getMessageResponseMetadata(message);
+  if (metadata && Array.isArray(metadata.tool_calls)) {
+    return metadata.tool_calls as ToolCall[];
+  }
+  return undefined;
+};
+
+const extractMessageToolResults = (message: BaseMessage) => {
+  if (message.additional_kwargs && "tool_result" in message.additional_kwargs) {
+    return (message.additional_kwargs as { tool_result?: unknown }).tool_result;
+  }
+  const metadata = getMessageResponseMetadata(message);
+  if (metadata?.tool_results) {
+    return metadata.tool_results;
+  }
+  if (
+    "tool_call_chunks" in message &&
+    (message as { tool_call_chunks?: unknown }).tool_call_chunks
+  ) {
+    return (message as { tool_call_chunks: unknown }).tool_call_chunks;
+  }
+  return undefined;
+};
+
 // Node to fetch weather data using API
-async function fetchWeatherData(state) {
+async function fetchWeatherData(state: WeatherGraphState) {
   const { messages } = state;
   const lastMessage = messages[messages.length - 1];
+  const lastMessageText = getMessageContentText(lastMessage);
 
   // Extract city from the user's message
-  const cityMatch = lastMessage.content.match(
+  const cityMatch = lastMessageText.match(
     /weather.*?(?:in|for)\s+([a-zA-Z\s]+)/i,
   );
   const city = cityMatch ? cityMatch[1].trim() : "London";
@@ -68,7 +144,7 @@ except Exception as e:
     print("WEATHER_DATA:", json.dumps({"error": "Failed to fetch weather data"}))
 `;
 
-  const response = await agent.invoke([new HumanMessage(prompt)]);
+  const response = await agent.invoke({ messages: [new HumanMessage(prompt)] });
 
   return {
     messages: [response],
@@ -77,10 +153,11 @@ except Exception as e:
 }
 
 // Node to analyze weather data and calculate comfort index
-async function analyzeWeatherData(state) {
+async function analyzeWeatherData(state: WeatherGraphState) {
   const { messages } = state;
 
   console.log(`🧮 Analyzing weather data and calculating comfort metrics...`);
+  const prevResponseText = getMessageContentText(messages[messages.length - 1]);
 
   const prompt = `
 Use the code_exec_python tool to analyze the weather data from the previous response and calculate a comfort index.
@@ -91,7 +168,7 @@ import json
 import re
 
 # Extract weather data from previous response
-prev_response = """${messages[messages.length - 1].content}"""
+prev_response = """${prevResponseText}"""
 
 # Find the WEATHER_DATA line
 weather_match = re.search(r'WEATHER_DATA: (.+)', prev_response)
@@ -139,65 +216,72 @@ else:
     print("ANALYSIS_RESULT:", json.dumps({"error": "Could not find weather data in previous response"}))
 `;
 
-  const response = await agent.invoke([new HumanMessage(prompt)]);
+  const response = await agent.invoke({ messages: [new HumanMessage(prompt)] });
 
   return { messages: [response] };
 }
 
 // Node for outdoor activity suggestions
-async function suggestOutdoorActivities(state) {
+async function suggestOutdoorActivities(state: WeatherGraphState) {
   const { weather_city } = state;
 
   console.log(`🏃 Suggesting outdoor activities for ${weather_city}...`);
 
-  const response = await agent.invoke([
-    new HumanMessage(
-      `Based on the weather analysis showing good conditions for outdoor activities in ${weather_city}, suggest 3 specific outdoor activities that would be enjoyable. Consider the temperature, humidity, and wind conditions from the analysis. Be specific and practical.`,
-    ),
-  ]);
+  const response = await agent.invoke({
+    messages: [
+      new HumanMessage(
+        `Based on the weather analysis showing good conditions for outdoor activities in ${weather_city}, suggest 3 specific outdoor activities that would be enjoyable. Consider the temperature, humidity, and wind conditions from the analysis. Be specific and practical.`,
+      ),
+    ],
+  });
 
   return { messages: [response] };
 }
 
 // Node for indoor activity suggestions
-async function suggestIndoorActivities(state) {
+async function suggestIndoorActivities(state: WeatherGraphState) {
   const { weather_city } = state;
 
   console.log(`🏠 Suggesting indoor activities for ${weather_city}...`);
 
-  const response = await agent.invoke([
-    new HumanMessage(
-      `Based on the weather analysis showing challenging conditions for outdoor activities in ${weather_city}, suggest 3 specific indoor activities that would be enjoyable. Consider the current weather conditions and provide engaging alternatives.`,
-    ),
-  ]);
+  const response = await agent.invoke({
+    messages: [
+      new HumanMessage(
+        `Based on the weather analysis showing challenging conditions for outdoor activities in ${weather_city}, suggest 3 specific indoor activities that would be enjoyable. Consider the current weather conditions and provide engaging alternatives.`,
+      ),
+    ],
+  });
 
   return { messages: [response] };
 }
 
 // Node for mixed activity suggestions
-async function suggestMixedActivities(state) {
+async function suggestMixedActivities(state: WeatherGraphState) {
   const { weather_city } = state;
 
   console.log(
     `🌤️  Suggesting mixed indoor/outdoor activities for ${weather_city}...`,
   );
 
-  const response = await agent.invoke([
-    new HumanMessage(
-      `Based on the weather analysis showing moderate conditions in ${weather_city}, suggest a mix of 2 light outdoor activities and 2 indoor activities that would work well in these conditions. Be practical about the weather constraints.`,
-    ),
-  ]);
+  const response = await agent.invoke({
+    messages: [
+      new HumanMessage(
+        `Based on the weather analysis showing moderate conditions in ${weather_city}, suggest a mix of 2 light outdoor activities and 2 indoor activities that would work well in these conditions. Be practical about the weather constraints.`,
+      ),
+    ],
+  });
 
   return { messages: [response] };
 }
 
 // Decision function to determine which activity path to take
-function decideActivityType(state) {
+function decideActivityType(state: WeatherGraphState) {
   const { messages } = state;
   const lastMessage = messages[messages.length - 1];
+  const analysisSource = getMessageContentText(lastMessage);
 
   // Extract activity type from the analysis
-  const activityMatch = lastMessage.content.match(/ANALYSIS_RESULT: (.+)/);
+  const activityMatch = analysisSource.match(/ANALYSIS_RESULT: (.+)/);
   if (activityMatch) {
     try {
       const analysis = JSON.parse(activityMatch[1]);
@@ -241,7 +325,9 @@ const graph = new StateGraph(MessagesAnnotation)
   .addEdge("mixed_activities", END)
   .compile();
 
-generateGraph(graph).catch(console.error);
+generateGraph(
+  graph as CompiledStateGraph<WeatherGraphState, Partial<WeatherGraphState>>,
+).catch(console.error);
 
 const run = async () => {
   console.log(
@@ -264,27 +350,29 @@ const run = async () => {
   console.log("\n✅ Graph execution finished.");
   console.log("📝 Final Results:");
   result.messages.forEach((msg, index) => {
-    if (msg.content && typeof msg.content === "string" && msg.content.trim()) {
-      console.log(`\n--- Step ${index + 1} ---`);
-      console.log(msg.content);
+    const messageText = getMessageContentText(msg);
+    if (!messageText.trim()) {
+      return;
+    }
 
-      const toolCalls = (msg as any).tool_calls ?? msg.response_metadata?.tool_calls;
-      if (toolCalls?.length) {
-        console.log("\n🛠️  Tool Calls:", JSON.stringify(toolCalls, null, 2));
-      }
+    console.log(`\n--- Step ${index + 1} ---`);
+    console.log(messageText);
 
-      const toolResults =
-        msg.additional_kwargs?.tool_result ??
-        msg.response_metadata?.tool_results ??
-        (msg as any).tool_call_chunks;
-      if (toolResults) {
-        console.log("\n📊 Tool Result:", toolResults);
-      }
+    const toolCalls = extractMessageToolCalls(msg);
+    if (toolCalls?.length) {
+      console.log("\n🛠️  Tool Calls:", JSON.stringify(toolCalls, null, 2));
+    }
+
+    const toolResults = extractMessageToolResults(msg);
+    if (toolResults) {
+      console.log("\n📊 Tool Result:", toolResults);
     }
   });
 };
 
-export async function generateGraph(graph) {
+export async function generateGraph(
+  graph: CompiledStateGraph<WeatherGraphState, Partial<WeatherGraphState>>,
+) {
   console.log("Generating graph...");
   const g = await graph.getGraphAsync();
   const image = await g.drawMermaidPng();

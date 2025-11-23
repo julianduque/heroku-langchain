@@ -7,6 +7,9 @@ import {
 } from "./types.js";
 import { getHerokuConfigOptionsWithEnvKeys, HerokuApiError } from "./common.js";
 
+const MAX_EMBEDDING_INPUTS = 96;
+const MAX_EMBEDDING_CHAR_LENGTH = 2048;
+
 /**
  * **HerokuEmbeddings** - Heroku Managed Inference Embeddings Integration
  *
@@ -198,10 +201,9 @@ export class HerokuEmbeddings extends Embeddings {
       }
     }
 
-    return { ...constructorParams, ...runtimeParams } as Omit<
-      HerokuEmbeddingsRequest,
-      "input"
-    >;
+    const mergedParams = { ...constructorParams, ...runtimeParams };
+    this.normalizeEncodingFormatInPlace(mergedParams);
+    return mergedParams as Omit<HerokuEmbeddingsRequest, "input">;
   }
 
   /**
@@ -217,19 +219,88 @@ export class HerokuEmbeddings extends Embeddings {
    * @internal
    */
   private validateInput(texts: string[]): void {
-    if (texts.length > 96) {
+    if (texts.length > MAX_EMBEDDING_INPUTS) {
       throw new Error(
-        `Heroku embeddings API supports maximum 96 strings per request. Received ${texts.length} strings.`,
+        `Heroku embeddings API supports maximum ${MAX_EMBEDDING_INPUTS} strings per request. Received ${texts.length} strings.`,
       );
     }
 
     for (let i = 0; i < texts.length; i++) {
-      if (texts[i].length > 2048) {
+      if (texts[i].length > MAX_EMBEDDING_CHAR_LENGTH) {
         throw new Error(
-          `String at index ${i} exceeds maximum length of 2048 characters. Received ${texts[i].length} characters.`,
+          `String at index ${i} exceeds maximum length of ${MAX_EMBEDDING_CHAR_LENGTH} characters. Received ${texts[i].length} characters.`,
         );
       }
     }
+  }
+
+  private chunkTextForEmbeddings(text: string): string[] {
+    const chunks: string[] = [];
+    for (let i = 0; i < text.length; i += MAX_EMBEDDING_CHAR_LENGTH) {
+      chunks.push(text.slice(i, i + MAX_EMBEDDING_CHAR_LENGTH));
+    }
+    return chunks;
+  }
+
+  private async embedChunksAndAverage(
+    chunks: string[],
+    options?: HerokuEmbeddingsCallOptions,
+  ): Promise<number[]> {
+    let aggregate: number[] = [];
+    let totalVectors = 0;
+
+    for (let i = 0; i < chunks.length; i += MAX_EMBEDDING_INPUTS) {
+      const batch = chunks.slice(i, i + MAX_EMBEDDING_INPUTS);
+      const vectors = await this.embedDocuments(batch, options);
+      for (const vector of vectors) {
+        if (aggregate.length === 0) {
+          aggregate = new Array(vector.length).fill(0);
+        }
+        for (let j = 0; j < vector.length; j += 1) {
+          aggregate[j] += vector[j];
+        }
+        totalVectors += 1;
+      }
+    }
+
+    if (totalVectors === 0) {
+      return [];
+    }
+
+    return aggregate.map((value) => value / totalVectors);
+  }
+
+  private normalizeEncodingFormatInPlace(params: Record<string, any>): void {
+    if (params.encoding_format === undefined) {
+      return;
+    }
+    const normalized = this.normalizeEncodingFormat(
+      params.encoding_format as string | undefined,
+    );
+    if (normalized) {
+      params.encoding_format = normalized;
+    } else {
+      delete params.encoding_format;
+    }
+  }
+
+  private normalizeEncodingFormat(
+    format?: string,
+  ): "raw" | "base64" | undefined {
+    if (!format) {
+      return undefined;
+    }
+    const normalized = format.trim().toLowerCase();
+    if (normalized === "raw" || normalized === "base64") {
+      return normalized as "raw" | "base64";
+    }
+    if (["float", "float32", "float64"].includes(normalized)) {
+      return "raw";
+    }
+    if (["binary", "bytes"].includes(normalized)) {
+      return "base64";
+    }
+    return "raw";
   }
 
   /**
@@ -369,11 +440,18 @@ export class HerokuEmbeddings extends Embeddings {
     text: string,
     options?: HerokuEmbeddingsCallOptions,
   ): Promise<number[]> {
-    const embeddings = await this.embedDocuments([text], {
+    const callOptions: HerokuEmbeddingsCallOptions = {
       ...options,
       input_type: options?.input_type ?? "search_query",
-    });
-    return embeddings[0];
+    };
+
+    if (text.length <= MAX_EMBEDDING_CHAR_LENGTH) {
+      const embeddings = await this.embedDocuments([text], callOptions);
+      return embeddings[0];
+    }
+
+    const chunks = this.chunkTextForEmbeddings(text);
+    return this.embedChunksAndAverage(chunks, callOptions);
   }
 
   /**

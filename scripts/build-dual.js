@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { promises as fs } from "fs";
-import { exec } from "child_process";
-import { promisify } from "util";
-import path from "path";
+import { promises as fs } from "node:fs";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+import path from "node:path";
 
 const execAsync = promisify(exec);
 
@@ -23,7 +23,7 @@ async function buildDual() {
 
   // Build ESM version (source files already have .js extensions)
   console.log("📦 Building ESM version...");
-  await execAsync("npx tsc -p tsconfig.json");
+  await execAsync("pnpm tsc -p tsconfig.json");
 
   // For CommonJS, we need to create temporary source files without .js extensions
   console.log("📦 Building CommonJS version...");
@@ -46,13 +46,14 @@ async function buildDual() {
 
       // Remove .js extensions from relative imports for CommonJS
       const modifiedContent = content
-        .replace(/from ["'](\.\/.+)\.js["']/g, 'from "$1"')
         .replace(
-          /import\s+(.+)\s+from\s+["'](\.\/.+)\.js["']/g,
-          'import $1 from "$2"',
+          /(from\s+["'])(\.{1,2}\/[^"']+)\.js(["'])/g,
+          (_, prefix, relPath, suffix) => `${prefix}${relPath}${suffix}`,
         )
-        .replace(/export\s+{[^}]+}\s+from\s+["'](\.\/.+)\.js["']/g, (match) =>
-          match.replace('.js"', '"').replace(".js'", "'"),
+        .replace(
+          /(import\()\s*(["'])(\.{1,2}\/[^"']+)\.js\2(\s*\))/g,
+          (_, start, quote, relPath, end) =>
+            `${start}${quote}${relPath}${quote}${end}`,
         );
 
       await fs.writeFile(tempFile, modifiedContent);
@@ -62,7 +63,8 @@ async function buildDual() {
     const cjsConfig = {
       extends: "./tsconfig.json",
       compilerOptions: {
-        module: "CommonJS",
+        module: "NodeNext",
+        moduleResolution: "NodeNext",
         outDir: "./dist/cjs",
         rootDir: `./${tempSrcDir}`,
         declaration: true,
@@ -76,7 +78,7 @@ async function buildDual() {
       "tsconfig.temp.json",
       JSON.stringify(cjsConfig, null, 2),
     );
-    await execAsync("npx tsc -p tsconfig.temp.json");
+    await execAsync("pnpm tsc -p tsconfig.temp.json");
   } finally {
     // Clean up temporary files
     await fs.rm(tempSrcDir, { recursive: true, force: true });

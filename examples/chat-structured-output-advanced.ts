@@ -124,38 +124,16 @@ const listComponentSchema = baseComponentSchema.extend({
     .describe("Template for rendering list entries"),
 });
 
-const statComponentSchema = baseComponentSchema.extend({
-  type: z.literal("stat"),
-  stats: z
-    .array(
-      z.object({
-        label: z.string(),
-        value: z.string(),
-        delta: z.string().optional(),
-        trend: z.enum(["up", "down", "neutral"]).optional(),
-        caption: z.string().optional(),
-      }),
-    )
-    .min(1)
-    .optional(),
-  metric: z.string().optional().describe("Primary metric value"),
-  valueKey: z.string().optional().describe("Key to look up the metric value"),
-  trend: z.enum(["up", "down", "neutral"]).optional(),
-  unit: z.string().optional().describe("Unit suffix for the metric"),
-  actions: z.array(actionSchema).optional(),
-});
-
 const componentSchemaBase = z.discriminatedUnion("type", [
   cardComponentSchema,
   tableComponentSchema,
   listComponentSchema,
-  statComponentSchema,
 ]);
 
 const componentSchema = componentSchemaBase.superRefine((value, ctx) => {
   if (value.type === "table" && !value.rows && !value.dataKey) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message:
         "Tables must include either rows data or a dataKey to populate them.",
       path: ["rows"],
@@ -164,25 +142,11 @@ const componentSchema = componentSchemaBase.superRefine((value, ctx) => {
 
   if (value.type === "list" && !value.items && !value.itemsKey) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message:
         "Lists must include either items or an itemsKey to populate them.",
       path: ["items"],
     });
-  }
-
-  if (value.type === "stat") {
-    const hasCollection = Array.isArray(value.stats) && value.stats.length > 0;
-    const hasMetricValue =
-      typeof value.metric === "string" || typeof value.valueKey === "string";
-    if (!hasCollection && !hasMetricValue) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "Stats must provide either a stats collection or a metric/valueKey pair.",
-        path: ["metric"],
-      });
-    }
   }
 });
 
@@ -221,7 +185,7 @@ const generativeUiSchema = z.object({
 
 const llmWithUiSchema = llm.withStructuredOutput(generativeUiSchema);
 
-export async function generateGenerativeUiBlueprint(context) {
+export async function generateGenerativeUiBlueprint(context: string) {
   const messages = [
     new SystemMessage(
       "You are a product designer collaborating with an engineer. Produce JSON describing a configurable UI using only the allowed component types.",
@@ -231,11 +195,13 @@ export async function generateGenerativeUiBlueprint(context) {
     ),
   ];
 
-  return llmWithUiSchema.invoke(messages);
+  return llmWithUiSchema.stream(messages);
 }
 
 generateGenerativeUiBlueprint("A chatbot for a customer support team").then(
-  (res) => {
-    console.log(res);
+  async (stream) => {
+    for await (const chunk of stream) {
+      console.log(chunk);
+    }
   },
 );

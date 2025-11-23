@@ -1,7 +1,6 @@
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import { HerokuAgent } from "../src/heroku-agent";
-import { createHerokuAgent } from "../src/create-heroku-agent";
 import { HerokuApiError } from "../src/common";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
 import type { HerokuAgentToolDefinition } from "../src/types";
@@ -388,13 +387,6 @@ describe("HerokuAgent", () => {
       });
 
       assert.ok(agent);
-    });
-  });
-  describe("createHerokuAgent", () => {
-    test("should return a LangGraph agent", () => {
-      const executor = createHerokuAgent({});
-      assert.ok(executor);
-      assert.strictEqual(typeof executor.invoke, "function");
     });
   });
 });

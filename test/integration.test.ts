@@ -5,7 +5,6 @@ import {
   HerokuApiError,
   type ChatHerokuFields,
   HerokuAgent,
-  createHerokuAgent,
   type HerokuAgentFields,
   type HerokuAgentToolDefinition,
 } from "../src/index";
@@ -48,7 +47,6 @@ describe("Integration tests", () => {
       assert.strictEqual(typeof ChatHeroku, "function");
       assert.strictEqual(typeof HerokuAgent, "function");
       assert.strictEqual(typeof HerokuApiError, "function");
-      assert.strictEqual(typeof createHerokuAgent, "function");
     });
 
     test("should allow type imports", () => {

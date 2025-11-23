@@ -2,7 +2,7 @@ import {
   BaseChatModelCallOptions,
   BaseChatModelParams,
 } from "@langchain/core/language_models/chat_models";
-import { StructuredTool } from "@langchain/core/tools";
+import type { StructuredTool, ServerTool } from "@langchain/core/tools";
 import type { RunnableConfig } from "@langchain/core/runnables";
 
 /**
@@ -105,17 +105,19 @@ export interface ChatHerokuCallOptions extends BaseChatModelCallOptions {
    * LangChain StructuredTool definitions are converted to Heroku's function tool format.
    * See: https://devcenter.heroku.com/articles/heroku-inference-api-v1-chat-completions#tools-array-function-type-tools
    */
-  tools?: StructuredTool[]; // Or a more specific Heroku tool type if needed
+  tools?: (StructuredTool | HerokuFunctionTool)[];
 
   /**
    * Controls how the model uses tools.
-   * Can be "auto", "required", or an object specifying a particular function to call.
+   * Can be "auto", "required", "any" (converted to "required"), or an object specifying a particular function to call.
+   * Note: LangChain may pass "any" which will be automatically converted to "required" for the Heroku API.
    * See: https://devcenter.heroku.com/articles/heroku-inference-api-v1-chat-completions#tool_choice-parameter
    */
   tool_choice?:
     | "none"
     | "auto"
     | "required"
+    | "any" // LangChain compatibility - converted to "required"
     | { type: "function"; function: { name: string } };
 
   /**
@@ -179,6 +181,7 @@ export interface HerokuFunctionToolParameters {
   type: "object";
   properties: Record<string, any>; // JSON schema for each parameter
   required?: string[];
+  additionalProperties?: boolean;
 }
 
 /**
@@ -191,6 +194,7 @@ export interface HerokuFunctionTool {
     name: string;
     description: string;
     parameters: HerokuFunctionToolParameters;
+    strict?: boolean;
   };
 }
 
@@ -361,7 +365,7 @@ export interface HerokuAgentCallOptions extends BaseChatModelCallOptions {
  * Defines the structure for tools used by HerokuAgent.
  * Based on SPECS.md Section 3.5.1.
  */
-export interface HerokuAgentToolDefinition {
+export interface HerokuAgentToolDefinition extends ServerTool {
   type: "heroku_tool" | "mcp";
   name: string;
   description?: string;

@@ -58,18 +58,15 @@
 export { ChatHeroku } from "./chat.js";
 
 /**
- * @deprecated Use ChatHeroku instead.
- */
-export { ChatHeroku as HerokuMia } from "./chat.js";
-
-/**
- * Configuration options and parameter types for structured output functionality.
+ * Configuration options and helper types for structured output functionality.
  * @see {@link StructuredOutputMethodOptions}
  * @see {@link StructuredOutputMethodParams}
+ * @see {@link StructuredOutputToolMetadata}
  */
 export type {
   StructuredOutputMethodOptions,
   StructuredOutputMethodParams,
+  StructuredOutputToolMetadata,
 } from "./chat.js";
 
 /**
@@ -81,15 +78,6 @@ export type {
  * @see {@link HerokuAgent} for detailed documentation
  */
 export { HerokuAgent } from "./heroku-agent.js";
-export {
-  createHerokuAgent,
-  type CreateHerokuAgentOptions,
-} from "./create-heroku-agent.js";
-
-/**
- * @deprecated Use HerokuAgent instead.
- */
-export { HerokuAgent as HerokuMiaAgent } from "./heroku-agent.js";
 
 /**
  * HerokuEmbeddings - Text embeddings for similarity search and RAG
@@ -132,14 +120,6 @@ export type {
   LocalToolCallChunk, // If this is intended to be part of the public API for consumers handling streams
 } from "./types.js";
 
-/**
- * @deprecated Use ChatHerokuFields and ChatHerokuCallOptions instead.
- */
-export type {
-  ChatHerokuFields as HerokuMiaFields,
-  ChatHerokuCallOptions as HerokuMiaCallOptions,
-} from "./types.js";
-
 // Type Definitions for HerokuAgent (Agents)
 /**
  * Configuration options for creating a HerokuAgent instance.
@@ -174,12 +154,4 @@ export type {
   HerokuEmbeddingObject,
   HerokuEmbeddingsUsage,
   HerokuEmbeddingsResponse,
-} from "./types.js";
-
-/**
- * @deprecated Use HerokuEmbeddingsFields instead.
- */
-export type {
-  HerokuEmbeddingsFields as HerokuMiaEmbeddingsFields,
-  HerokuEmbeddingsCallOptions as HerokuMiaEmbeddingsCallOptions,
 } from "./types.js";

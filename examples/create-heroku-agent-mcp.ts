@@ -53,8 +53,6 @@ async function main() {
         console.log(JSON.stringify(message.additional_kwargs, null, 2));
       }
     }
-
-    console.log("\n✅ MCP run finished.");
   } catch (error) {
     console.error("❌ Error:", error);
   }

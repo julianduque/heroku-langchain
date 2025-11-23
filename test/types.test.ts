@@ -1,5 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
+import type { ServerTool } from "@langchain/core/tools";
 import type {
   ChatHerokuFields,
   ChatHerokuCallOptions,
@@ -259,6 +260,16 @@ describe("Type definitions", () => {
       assert.ok(toolDef);
       assert.strictEqual(toolDef.type, "heroku_tool");
       assert.strictEqual(toolDef.name, "minimal_tool");
+    });
+
+    test("should satisfy LangChain ServerTool shape", () => {
+      const herokuTool: HerokuAgentToolDefinition = {
+        type: "heroku_tool",
+        name: "server_side_tool",
+      };
+
+      const serverTool: ServerTool = herokuTool;
+      assert.ok(serverTool);
     });
   });
 
