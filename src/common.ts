@@ -5,7 +5,7 @@ import {
   FunctionMessage,
 } from "@langchain/core/messages";
 import { StructuredTool } from "@langchain/core/tools";
-import { convertToOpenAIFunction } from "@langchain/core/utils/function_calling";
+import { convertToOpenAITool } from "@langchain/core/utils/function_calling";
 import type {
   HerokuChatMessage,
   HerokuFunctionTool,
@@ -393,52 +393,71 @@ export function langchainMessagesToHerokuMessages(
  * ```
  */
 export function langchainToolsToHerokuTools(
-  tools: StructuredTool[],
+  tools: (StructuredTool | Record<string, any>)[] | null | undefined,
 ): HerokuFunctionTool[] {
   if (!tools || tools.length === 0) {
     return [];
   }
-  return tools.map((tool) => {
-    const openAIFunction = convertToOpenAIFunction(tool);
-    let herokuParams: HerokuFunctionTool["function"]["parameters"];
 
-    if (
-      openAIFunction.parameters &&
-      typeof openAIFunction.parameters === "object"
-    ) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { $schema, ...params } = openAIFunction.parameters as any;
+  return tools
+    .map((tool) => {
+      const openAITool = convertToOpenAITool(tool);
       if (
-        params &&
-        typeof params === "object" &&
-        params.type &&
-        params.properties
+        !openAITool ||
+        typeof openAITool !== "object" ||
+        openAITool.type !== "function" ||
+        !openAITool.function
       ) {
-        herokuParams = params as HerokuFunctionTool["function"]["parameters"];
-      } else {
-        herokuParams = { type: "object", properties: {} };
+        return null;
       }
-    } else {
-      herokuParams = { type: "object", properties: {} };
+
+      const sanitizedParams = sanitizeToolParameters(
+        openAITool.function.parameters,
+      );
+
+      const functionName = openAITool.function.name || "extract";
+      const functionDescription =
+        openAITool.function.description || "Extract structured data."; // Default description
+
+      return {
+        type: "function",
+        function: {
+          name: functionName,
+          description: functionDescription,
+          parameters: sanitizedParams,
+        },
+      } satisfies HerokuFunctionTool;
+    })
+    .filter((tool): tool is HerokuFunctionTool => tool !== null);
+}
+
+function sanitizeToolParameters(
+  parameters: Record<string, any> | undefined,
+): HerokuFunctionTool["function"]["parameters"] {
+  if (!parameters || typeof parameters !== "object") {
+    return { type: "object", properties: {} };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { $schema, ...rest } = parameters;
+  const candidate = { ...rest };
+
+  if (
+    typeof candidate.type === "string" &&
+    candidate.type === "object" &&
+    typeof candidate.properties === "object"
+  ) {
+    if (candidate.additionalProperties === undefined) {
+      candidate.additionalProperties = false;
     }
+    return candidate as HerokuFunctionTool["function"]["parameters"];
+  }
 
-    // If convertToOpenAIFunction doesn't yield a name from the StructuredTool,
-    // default to "extract". This is based on the error message showing that
-    // LangChain Core's withStructuredOutput parser is looking for a tool call named "extract".
-    const functionName = openAIFunction.name || "extract";
-
-    const functionDescription =
-      openAIFunction.description || "Extract structured data."; // Default description
-
-    return {
-      type: "function",
-      function: {
-        name: functionName,
-        description: functionDescription,
-        parameters: herokuParams,
-      },
-    };
-  });
+  return {
+    type: "object",
+    properties:
+      typeof candidate.properties === "object" ? candidate.properties : {},
+  };
 }
 
 /**

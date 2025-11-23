@@ -394,5 +394,61 @@ describe("Common utilities", () => {
         additionalProperties: false,
       });
     });
+
+    test("should accept pre-formatted OpenAI function tools", () => {
+      const toolDefinition = {
+        type: "function",
+        function: {
+          name: "extract_weather",
+          description: "Extract structured weather info",
+          parameters: {
+            $schema: "http://json-schema.org/draft-07/schema#",
+            type: "object",
+            properties: {
+              city: { type: "string" },
+              temperatureCelsius: { type: "number" },
+            },
+            required: ["city", "temperatureCelsius"],
+          },
+          strict: true,
+        },
+      };
+
+      const result = langchainToolsToHerokuTools([toolDefinition]);
+
+      assert.strictEqual(result.length, 1);
+      assert.strictEqual(result[0].function.name, "extract_weather");
+      assert.strictEqual(
+        result[0].function.description,
+        "Extract structured weather info",
+      );
+      assert.deepStrictEqual(result[0].function.parameters, {
+        type: "object",
+        properties: {
+          city: { type: "string" },
+          temperatureCelsius: { type: "number" },
+        },
+        required: ["city", "temperatureCelsius"],
+        additionalProperties: false,
+      });
+    });
+
+    test("should default to empty schema when parameters are missing", () => {
+      const malformedTool = {
+        type: "function",
+        function: {
+          name: "broken_tool",
+          description: "Tool missing proper parameters",
+        },
+      };
+
+      const result = langchainToolsToHerokuTools([malformedTool]);
+
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0].function.parameters, {
+        type: "object",
+        properties: {},
+      });
+    });
   });
 });

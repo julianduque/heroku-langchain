@@ -4,8 +4,13 @@ import {
   AIMessage,
   AIMessageChunk,
   SystemMessage,
+  ToolMessageChunk,
 } from "@langchain/core/messages";
-import { ChatResult, ChatGeneration } from "@langchain/core/outputs";
+import {
+  ChatResult,
+  ChatGeneration,
+  ChatGenerationChunk,
+} from "@langchain/core/outputs";
 import { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager";
 import {
   RunnableLambda,
@@ -15,7 +20,7 @@ import {
 import { DynamicStructuredTool, StructuredTool } from "@langchain/core/tools";
 import type { Tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { toJsonSchema } from "@langchain/core/utils/json_schema";
 import {
   HerokuAgentFields,
   HerokuAgentCallOptions,
@@ -42,77 +47,130 @@ import { HerokuModel } from "./model.js";
  * Unlike the basic ChatHeroku model, agents are designed for autonomous task execution with
  * built-in tool calling capabilities and advanced reasoning patterns.
  *
- * @example
+ * @example LangChain createAgent integration
  * ```typescript
- * import { HerokuAgent } from "heroku-langchain";
+ * // Source: examples/create-heroku-agent-basic.ts
+ * import { createAgent, createMiddleware } from "langchain";
  * import { HumanMessage } from "@langchain/core/messages";
+ * import { HerokuAgent } from "heroku-langchain";
+ * import { HerokuAgentToolDefinition } from "heroku-langchain/types";
  *
- * // Basic agent usage
- * const agent = new HerokuAgent({
- *   model: "gpt-oss-120b",
- *   temperature: 0.3,
- *   tools: [
- *     {
- *       type: "heroku_tool",
- *       name: "dyno_run_command  ",
- *       runtime_params: {
- *         target_app_name: "my-app",
- *         tool_params: {
- *            cmd: "date",
- *            description: "Gets the current date and time on the server.",
- *            parameters: { type: "object", properties: {} },
- *          },
- *        },
- *       }
- *   ],
- *   apiKey: process.env.INFERENCE_KEY,
- *   apiUrl: process.env.INFERENCE_URL
- * });
- *
- * const response = await agent.invoke([
- *   new HumanMessage("Deploy my Node.js application to Heroku")
- * ]);
- * ```
- *
- * @example
- * ```typescript
- * // Agent with MCP tools
- * const agentWithMCP = new HerokuAgent({
- *   model: "gpt-oss-120b",
- *   tools: [
- *     {
- *       type: "mcp",
- *       name: "mcp/read_file",
- *       description: "Read file contents via MCP"
+ * const tools: HerokuAgentToolDefinition[] = [
+ *   {
+ *     type: "heroku_tool",
+ *     name: "dyno_run_command",
+ *     runtime_params: {
+ *       target_app_name: process.env.HEROKU_APP_NAME ?? "mia-inference-demo",
+ *       tool_params: {
+ *         cmd: "uname -a",
+ *         description: "Gets the current kernel version on the server.",
+ *         parameters: { type: "object", properties: {} },
+ *       },
  *     },
- *     {
- *       type: "heroku_tool",
- *       name: "scale_dyno",
- *       runtime_params: {
- *         target_app_name: "production-app"
- *       }
- *     }
- *   ]
+ *   },
+ * ];
+ *
+ * const model = new HerokuAgent({ tools });
+ * const loggingMiddleware = createMiddleware({
+ *   name: "LoggingMiddleware",
+ *   wrapModelCall: async (request, handler) => {
+ *     console.log("system prompt", request.systemPrompt ?? "<default>");
+ *     return handler(request);
+ *   },
  * });
  *
- * const result = await agentWithMCP.invoke([
- *   new HumanMessage("Read my package.json and scale the app based on the dependencies")
- * ]);
+ * const agent = createAgent({
+ *   model,
+ *   tools,
+ *   systemPrompt: "You are a Heroku operator.",
+ *   middleware: [loggingMiddleware],
+ * });
+ *
+ * const response = await agent.invoke({
+ *   messages: [
+ *     new HumanMessage("What kernel version is running on the app server?"),
+ *   ],
+ * });
+ * console.log(response.messages.at(-1)?.content);
  * ```
  *
- * @example
+ * @example MCP tooling via createAgent
  * ```typescript
- * // Streaming agent responses to see tool execution in real-time
- * const stream = await agent.stream([
- *   new HumanMessage("Check the status of all my Heroku apps and restart any that are down")
- * ]);
+ * // Source: examples/create-agent-mcp.ts
+ * import { createAgent } from "langchain";
+ * import { HumanMessage } from "@langchain/core/messages";
+ * import { HerokuAgent } from "heroku-langchain";
+ * import { HerokuAgentToolDefinition } from "heroku-langchain/types";
  *
- * for await (const chunk of stream) {
- *   if (chunk.response_metadata?.tool_calls) {
- *     console.log("Agent is executing:", chunk.response_metadata.tool_calls);
+ * const tools: HerokuAgentToolDefinition[] = [
+ *   {
+ *     type: "mcp",
+ *     name: "mcp-brave/brave_web_search",
+ *   },
+ * ];
+ *
+ * const model = new HerokuAgent({ tools });
+ * const agent = createAgent({
+ *   model,
+ *   tools,
+ *   systemPrompt:
+ *     "Blend model knowledge with results from mcp-brave/brave_web_search.",
+ * });
+ *
+ * const response = await agent.invoke({
+ *   messages: [new HumanMessage("What is new in the world of AI?")],
+ * });
+ *
+ * const finalMessage = response.messages.at(-1);
+ * console.log(finalMessage?.content);
+ * console.log(finalMessage?.response_metadata?.tool_calls);
+ * ```
+ *
+ * @example Streaming agent responses
+ * ```typescript
+ * // Source: examples/create-heroku-agent-streaming.ts
+ * import { createAgent } from "langchain";
+ * import { HumanMessage } from "@langchain/core/messages";
+ * import { HerokuAgent } from "heroku-langchain";
+ * import { HerokuAgentToolDefinition } from "heroku-langchain/types";
+ *
+ * const tools: HerokuAgentToolDefinition[] = [
+ *   {
+ *     type: "heroku_tool",
+ *     name: "dyno_run_command",
+ *     runtime_params: {
+ *       target_app_name: process.env.HEROKU_APP_NAME ?? "mia-inference-demo",
+ *       tool_params: {
+ *         cmd: "date",
+ *         description: "Gets the current date and time on the server.",
+ *         parameters: { type: "object", properties: {} },
+ *       },
+ *     },
+ *   },
+ * ];
+ *
+ * const agent = createAgent({
+ *   model: new HerokuAgent({ tools }),
+ *   tools,
+ *   systemPrompt:
+ *     "You are a Heroku operator. Prefer dyno_run_command to inspect the target app.",
+ * });
+ *
+ * const stream = await agent.stream({
+ *   messages: [
+ *     new HumanMessage(
+ *       "Collect detailed uptime information from the target app.",
+ *     ),
+ *   ],
+ * });
+ *
+ * for await (const chunk of stream as AsyncIterable<Record<string, any>>) {
+ *   const latestMessage = chunk.messages?.at(-1);
+ *   if (latestMessage?.content) {
+ *     console.log(latestMessage.content);
  *   }
- *   if (chunk.content) {
- *     process.stdout.write(chunk.content);
+ *   if (latestMessage?.response_metadata?.tool_calls?.length) {
+ *     console.log("tool calls", latestMessage.response_metadata.tool_calls);
  *   }
  * }
  * ```
@@ -211,7 +269,7 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
     [key: string]: any;
   } {
     const constructorParams = {
-      model: this.model,
+      model: this.getModelForRequest(),
       temperature: this.temperature,
       max_tokens_per_inference_request: this.maxTokensPerRequest,
       stop: this.stop,
@@ -259,13 +317,26 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
     let tool_results: any = undefined;
     let sawToolCalls = false;
     let sawToolResults = false;
+    const normalizeToolCall = (tc: any) => ({
+      id: tc?.id,
+      name: tc?.name,
+      args: tc?.args ?? {},
+      type: "tool_call" as const,
+    });
 
     for await (const chunk of stream) {
-      if (chunk.content) {
-        aggregatedContent += chunk.content;
+      // Only aggregate textual content from assistant chunks, not tool messages
+      if (chunk instanceof AIMessageChunk && chunk.content) {
+        // If we've already seen a tool result, only accumulate post-tool assistant text.
+        const text = typeof chunk.content === "string" ? chunk.content : "";
+        const needsSpace =
+          aggregatedContent.length > 0 &&
+          aggregatedContent[aggregatedContent.length - 1] !== " " &&
+          !text.startsWith(" ");
+        aggregatedContent += needsSpace ? ` ${text}` : text;
       }
 
-      // Merge additional_kwargs from chunks
+      // Merge additional_kwargs from chunks (e.g., finish_reason)
       if (chunk.additional_kwargs) {
         Object.assign(additional_kwargs, chunk.additional_kwargs);
         if (
@@ -278,17 +349,30 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
 
       // Extract tool calls and results from response_metadata (this is where Heroku puts them)
       if (chunk.response_metadata) {
-        if (chunk.response_metadata.tool_calls) {
-          tool_calls = chunk.response_metadata.tool_calls;
+        const toolCalls = (chunk.response_metadata as any).tool_calls;
+        if (Array.isArray(toolCalls)) {
+          tool_calls = toolCalls.map(normalizeToolCall);
           if (tool_calls.length > 0) sawToolCalls = true;
         }
-        if (chunk.response_metadata.tool_results) {
-          tool_results = chunk.response_metadata.tool_results;
+        if ((chunk.response_metadata as any).tool_results !== undefined) {
+          const tr = (chunk.response_metadata as any).tool_results;
+          tool_results = tr
+            ? {
+                tool_call_id: tr.tool_call_id,
+                tool_name: tr.tool_name,
+                result: tr.result,
+                args: tr.args,
+              }
+            : tr;
           sawToolResults = true;
+          // Reset aggregation after tool results to capture only final assistant reply.
+          aggregatedContent = "";
         }
       }
 
-      finalAIMessageChunk = chunk;
+      if (chunk instanceof AIMessageChunk) {
+        finalAIMessageChunk = chunk;
+      }
     }
 
     // Semantics:
@@ -297,13 +381,25 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
     // - If tool results were observed, tools already ran server-side. Return final content and
     //   clear tool_calls to avoid triggering another tool execution loop.
     const shouldTriggerLocalTools = sawToolCalls && !sawToolResults;
+    const toolCallsForTrace = tool_calls.length > 0 ? tool_calls : undefined;
+    const toolResultsForTrace = tool_results
+      ? {
+          tool_call_id: tool_results.tool_call_id,
+          tool_name: tool_results.tool_name,
+          result: tool_results.result,
+          args: tool_results.args,
+        }
+      : undefined;
     const message = new AIMessage({
       content: shouldTriggerLocalTools ? "" : aggregatedContent,
-      tool_calls:
-        shouldTriggerLocalTools && tool_calls.length > 0
-          ? tool_calls
-          : undefined,
-      additional_kwargs: additional_kwargs,
+      // Expose tool calls for tracing even if they were executed server-side.
+      tool_calls: toolCallsForTrace,
+      additional_kwargs: {
+        ...additional_kwargs,
+        tool_calls: toolCallsForTrace,
+        tool_results: toolResultsForTrace,
+        server_side_tools_executed: sawToolResults || false,
+      },
     });
 
     const generation: ChatGeneration = {
@@ -333,7 +429,7 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
     messages: BaseMessage[],
     options: this["ParsedCallOptions"],
     runManager?: CallbackManagerForLLMRun,
-  ): AsyncGenerator<AIMessageChunk> {
+  ): AsyncGenerator<AIMessageChunk | ToolMessageChunk> {
     const agentApiEndpoint = "/v1/agents/heroku";
 
     const herokuConfig = getHerokuConfigOptions(
@@ -421,17 +517,23 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
               // Build response metadata for tool calls if present
               const response_metadata: Record<string, any> = {
                 finish_reason: choice.finish_reason,
-                usage: eventDataJSON.usage,
               };
 
+              let mappedToolCalls: any[] | undefined = undefined;
               // Check for tool calls in delta and add to response metadata
               if (delta.tool_calls && delta.tool_calls.length > 0) {
-                response_metadata.tool_calls = delta.tool_calls.map(
-                  (tc: any) => {
-                    // Find the original tool definition to include runtime_params
+                mappedToolCalls = delta.tool_calls.map((tc: any) => {
+                  let parsedArgs: any = {};
+                  if (tc.function?.arguments) {
+                    try {
+                      parsedArgs = JSON.parse(tc.function.arguments);
+                    } catch {
+                      parsedArgs = tc.function.arguments;
+                    }
+                  }
+
+                  if (!parsedArgs || Object.keys(parsedArgs).length === 0) {
                     const originalTool = this.tools?.find((tool: any) => {
-                      // For heroku_tool, match by name
-                      // For mcp tools, match by name (which includes the full mcp path)
                       if (
                         (tool.type === "heroku_tool" || tool.type === "mcp") &&
                         tool.name === tc.function?.name
@@ -440,40 +542,26 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
                       }
                       return false;
                     });
-
-                    const toolCallInfo: any = {
-                      id: tc.id,
-                      name: tc.function?.name,
-                      args: tc.function?.arguments
-                        ? JSON.parse(tc.function.arguments)
-                        : {},
-                      type: "tool_call",
-                    };
-
-                    // Include original tool definition for better tracing
-                    if (originalTool) {
-                      toolCallInfo.original_tool_definition = originalTool;
-                      // Specifically include runtime_params for heroku_tool types
-                      if (
-                        originalTool.type === "heroku_tool" &&
-                        originalTool.runtime_params
-                      ) {
-                        toolCallInfo.runtime_params =
-                          originalTool.runtime_params;
-                        // For heroku_tool, populate args with runtime_params for LangSmith display
-                        if (Object.keys(toolCallInfo.args).length === 0) {
-                          toolCallInfo.args = {
-                            target_app_name:
-                              originalTool.runtime_params.target_app_name,
-                            ...originalTool.runtime_params.tool_params,
-                          };
-                        }
-                      }
+                    if (
+                      originalTool?.type === "heroku_tool" &&
+                      originalTool.runtime_params
+                    ) {
+                      parsedArgs = {
+                        target_app_name:
+                          originalTool.runtime_params.target_app_name,
+                        ...originalTool.runtime_params.tool_params,
+                      };
                     }
+                  }
 
-                    return toolCallInfo;
-                  },
-                );
+                  return {
+                    id: tc.id,
+                    name: tc.function?.name,
+                    args: parsedArgs,
+                    type: "tool_call" as const,
+                  };
+                });
+                response_metadata.tool_calls = mappedToolCalls;
 
                 // Notify callback manager about tool calls for tracing
                 for (const toolCall of delta.tool_calls) {
@@ -508,9 +596,10 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
 
               yield new AIMessageChunk({
                 content: content,
+                tool_calls: mappedToolCalls,
                 additional_kwargs: {
                   finish_reason: choice.finish_reason,
-                  usage: eventDataJSON.usage,
+                  tool_calls: mappedToolCalls,
                 },
                 response_metadata,
               });
@@ -521,14 +610,6 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
             const toolCompletionData = eventDataJSON.choices?.[0]?.message;
 
             if (toolCompletionData) {
-              // Queue server tool result by tool name for local no-op tools to consume
-              try {
-                this.enqueueServerToolResult(
-                  toolCompletionData.name,
-                  toolCompletionData.content,
-                );
-              } catch {}
-
               // Find the original tool definition for enhanced logging
               const originalTool = this.tools?.find((tool: any) => {
                 if (
@@ -545,6 +626,41 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
                 }
                 return false;
               });
+
+              // Try to surface the args that were used server-side
+              let toolArgs: any = {};
+              if (typeof (toolCompletionData as any).arguments === "string") {
+                try {
+                  toolArgs = JSON.parse((toolCompletionData as any).arguments);
+                } catch {
+                  toolArgs = (toolCompletionData as any).arguments;
+                }
+              }
+
+              // If arguments aren't present, fall back to the server tool definition
+              const toolCallSummary = {
+                id: toolCompletionData.tool_call_id,
+                name: toolCompletionData.name,
+                args:
+                  Object.keys(toolArgs || {}).length > 0
+                    ? toolArgs
+                    : originalTool?.runtime_params
+                      ? {
+                          target_app_name:
+                            originalTool.runtime_params.target_app_name,
+                          ...originalTool.runtime_params.tool_params,
+                        }
+                      : {},
+                type: "tool_call" as const,
+              };
+
+              // Queue server tool result by tool name for local no-op tools to consume
+              try {
+                this.enqueueServerToolResult(
+                  toolCompletionData.name,
+                  toolCompletionData.content,
+                );
+              } catch {}
 
               // Notify callback manager about tool result for tracing
               if (
@@ -569,24 +685,24 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
                   tool_call_id: toolCompletionData.tool_call_id,
                   tool_name: toolCompletionData.name,
                   result: toolCompletionData.content,
+                  args: toolCallSummary.args,
                 },
+                tool_calls: [toolCallSummary],
               };
 
-              // Include original tool definition in response metadata
-              if (originalTool) {
-                response_metadata.tool_results.original_tool_definition =
-                  originalTool;
-                if (
-                  originalTool.type === "heroku_tool" &&
-                  originalTool.runtime_params
-                ) {
-                  response_metadata.tool_results.runtime_params =
-                    originalTool.runtime_params;
-                }
-              }
+              const toolMessageChunk = new ToolMessageChunk({
+                // Keep tool result available to consumers without adding to assistant text output
+                content: "",
+                tool_call_id: toolCompletionData.tool_call_id,
+              });
 
+              // Emit ToolMessageChunk for tracing/consumers
+              yield toolMessageChunk;
+
+              // Also emit a lightweight AIMessageChunk carrying metadata for upstream aggregation
               yield new AIMessageChunk({
                 content: "",
+                tool_calls: [toolCallSummary],
                 additional_kwargs: {
                   tool_call_id: toolCompletionData.tool_call_id,
                   tool_name: toolCompletionData.name,
@@ -679,6 +795,29 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
   }
 
   /**
+   * LangChain streaming hook. Wraps `_stream` to emit ChatGenerationChunk objects
+   * so BaseChatModel.stream() stays on the streaming path.
+   */
+  async *_streamResponseChunks(
+    messages: BaseMessage[],
+    options: this["ParsedCallOptions"],
+    runManager?: CallbackManagerForLLMRun,
+  ): AsyncGenerator<ChatGenerationChunk> {
+    for await (const chunk of this._stream(messages, options, runManager)) {
+      const chunkText = typeof chunk.content === "string" ? chunk.content : "";
+      yield new ChatGenerationChunk({
+        message: chunk,
+        text: chunkText,
+        generationInfo: {
+          ...chunk.additional_kwargs,
+          tool_calls: (chunk as any).tool_calls,
+          tool_results: (chunk.additional_kwargs as any)?.tool_results,
+        },
+      });
+    }
+  }
+
+  /**
    * Bind agent tools (heroku_tool or mcp) to this instance.
    */
   bindTools(tools: any[]): HerokuAgent {
@@ -696,7 +835,7 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
     });
 
     const boundInstance = new HerokuAgent({
-      model: this.model,
+      model: this.getModelForRequest(),
       temperature: this.temperature,
       maxTokensPerRequest: this.maxTokensPerRequest,
       stop: this.stop,
@@ -823,9 +962,7 @@ export class HerokuAgent extends HerokuModel<HerokuAgentCallOptions> {
     let jsonSchema: Record<string, any> | undefined = undefined;
     if (isZodSchema(schema)) {
       zodSchema = schema as any;
-      const asJson = zodToJsonSchema(schema as any, {
-        $refStrategy: "none",
-      }) as Record<string, any>;
+      const asJson = toJsonSchema(schema as any) as Record<string, any>;
       const { $schema: _ignored, ...clean } = asJson;
       jsonSchema = clean;
     } else {

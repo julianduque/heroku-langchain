@@ -27,6 +27,9 @@ export interface HerokuBaseFields extends BaseChatModelParams {
 export abstract class HerokuModel<
   CallOptions extends BaseChatModelCallOptions,
 > extends BaseChatModel<CallOptions> {
+  /** Actual model ID used when calling Heroku APIs */
+  protected resolvedModelId: string;
+  /** Public/alias model name exposed to LangChain (can differ from actual ID) */
   protected model: string;
   protected temperature?: number;
   protected stop?: string[];
@@ -45,12 +48,14 @@ export abstract class HerokuModel<
       (process as any)?.env &&
       (process as any).env.INFERENCE_MODEL_ID;
 
-    this.model = fields?.model || modelFromEnv || "";
-    if (!this.model) {
+    const resolvedModel = fields?.model || modelFromEnv || "";
+    if (!resolvedModel) {
       throw new Error(
         "Heroku model ID not found. Please set it in the constructor, or set the INFERENCE_MODEL_ID environment variable.",
       );
     }
+    this.resolvedModelId = resolvedModel;
+    this.model = resolvedModel;
 
     this.temperature = fields?.temperature ?? 1.0;
     this.stop = fields?.stop;
@@ -142,5 +147,9 @@ export abstract class HerokuModel<
       undefined,
       lastError,
     );
+  }
+
+  protected getModelForRequest(): string {
+    return this.resolvedModelId;
   }
 }

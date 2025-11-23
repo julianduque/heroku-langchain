@@ -1,5 +1,5 @@
 import { HumanMessage } from "@langchain/core/messages";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 import { loadMcpTools } from "@langchain/mcp-adapters";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -21,7 +21,7 @@ async function main() {
   await client.connect(transport);
 
   const tools = await loadMcpTools("database", client);
-  const agent = createReactAgent({ llm: model, tools });
+  const agent = createAgent({ model, tools });
 
   const response = await agent.invoke({
     messages: [new HumanMessage("List all repositories")],
