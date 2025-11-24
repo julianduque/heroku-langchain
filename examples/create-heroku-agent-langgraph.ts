@@ -9,11 +9,11 @@ import {
   type CompiledStateGraph,
 } from "@langchain/langgraph";
 import { HerokuAgent } from "../src/index.js";
-import { HerokuAgentToolDefinition } from "../src/types.js";
+import { HerokuTool } from "../src/types.js";
 import { writeFileSync } from "node:fs";
 import { Buffer } from "node:buffer";
 
-const tools: HerokuAgentToolDefinition[] = [
+const tools: HerokuTool[] = [
   {
     type: "heroku_tool",
     name: "code_exec_python",

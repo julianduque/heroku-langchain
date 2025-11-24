@@ -1,13 +1,13 @@
 import { createAgent, createMiddleware } from "langchain";
 import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgent } from "../src"; // Adjusted for local example structure
-import { HerokuAgentToolDefinition } from "../src/types";
+import { HerokuTool } from "../src/types";
 
 async function main() {
   console.log("🤖 Running createAgent + HerokuAgent Example...");
 
   const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
-  const tools: HerokuAgentToolDefinition[] = [
+  const tools: HerokuTool[] = [
     {
       type: "heroku_tool",
       name: "dyno_run_command",

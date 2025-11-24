@@ -1,7 +1,7 @@
 import { createAgent } from "langchain";
 import { BaseMessage, HumanMessage } from "@langchain/core/messages";
 import { HerokuAgent } from "../src";
-import { HerokuAgentToolDefinition } from "../src/types";
+import { HerokuTool } from "../src/types";
 
 const stringifyMessageContent = (content: BaseMessage["content"]): string => {
   if (typeof content === "string") return content;
@@ -24,7 +24,7 @@ async function main() {
   console.log("🤖 Running createAgent Examples with HerokuAgent...");
 
   const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo"; // Change this to your actual app name
-  const tools: HerokuAgentToolDefinition[] = [
+  const tools: HerokuTool[] = [
     {
       type: "heroku_tool",
       name: "dyno_run_command",

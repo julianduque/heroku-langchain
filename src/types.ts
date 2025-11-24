@@ -140,7 +140,6 @@ export type HerokuChatMessageRole = "system" | "user" | "assistant" | "tool";
 
 /**
  * Represents a tool call made by the assistant, as per Heroku API.
- * Source: SPECS.md 2.5.3 & Heroku /v1/chat/completions doc (tool_calls array)
  */
 export interface HerokuToolCall {
   id: string;
@@ -153,7 +152,6 @@ export interface HerokuToolCall {
 
 /**
  * Content for a message with role "tool", as per Heroku API.
- * Source: SPECS.md 2.5.4 & Heroku /v1/chat/completions doc (message with role: "tool")
  */
 export interface HerokuToolMessageContent {
   tool_call_id: string;
@@ -163,7 +161,6 @@ export interface HerokuToolMessageContent {
 
 /**
  * Structure for a message in the Heroku API request/response.
- * Source: SPECS.md Table ChatHeroku Request Mapping & Heroku /v1/chat/completions doc (messages array)
  */
 export interface HerokuChatMessage {
   role: HerokuChatMessageRole;
@@ -175,7 +172,6 @@ export interface HerokuChatMessage {
 
 /**
  * JSON schema for the parameters of a function tool, as per Heroku API.
- * Source: SPECS.md 2.5.1 & Heroku /v1/chat/completions doc (tools array, function type)
  */
 export interface HerokuFunctionToolParameters {
   type: "object";
@@ -186,7 +182,6 @@ export interface HerokuFunctionToolParameters {
 
 /**
  * Definition for a "function" type tool in a Heroku API request.
- * Source: SPECS.md 2.5.1 & Heroku /v1/chat/completions doc (tools array)
  */
 export interface HerokuFunctionTool {
   type: "function";
@@ -200,7 +195,6 @@ export interface HerokuFunctionTool {
 
 /**
  * Request payload for Heroku /v1/chat/completions API.
- * Source: SPECS.md Table ChatHeroku Request Mapping & Heroku /v1/chat/completions doc
  */
 export interface HerokuChatCompletionRequest {
   model: string;
@@ -259,7 +253,7 @@ export interface HerokuChatCompletionResponse {
 
 /**
  * The delta part of a streaming choice, containing incremental updates.
- * Source: Based on common SSE patterns for LLMs (e.g., OpenAI) & SPECS.md 2.4.2
+ * Source: Based on common SSE patterns for LLMs (e.g., OpenAI)
  * Needs verification against actual Heroku stream format.
  */
 export interface HerokuChatCompletionStreamChoiceDelta {
@@ -270,7 +264,7 @@ export interface HerokuChatCompletionStreamChoiceDelta {
 
 /**
  * A single choice in a streaming chat completion chunk from Heroku.
- * Source: Based on common SSE patterns & SPECS.md 2.4.2
+ * Source: Based on common SSE patterns
  */
 export interface HerokuChatCompletionStreamChoice {
   index: number;
@@ -281,7 +275,7 @@ export interface HerokuChatCompletionStreamChoice {
 
 /**
  * Streaming response chunk payload from Heroku /v1/chat/completions API (SSE message data).
- * Source: Based on common SSE patterns & SPECS.md 2.4.2
+ * Source: Based on common SSE patterns
  * Needs verification against actual Heroku stream format.
  */
 export interface HerokuChatCompletionStreamResponse {
@@ -308,12 +302,9 @@ export interface LocalToolCallChunk {
   type: "tool_call_chunk";
 }
 
-// --- Heroku Agent API Specific Types (SPECS.md Section 3) ---
-
 /**
  * Interface for the fields to instantiate HerokuAgent.
  * Extends BaseChatModelParams and includes Heroku-specific agent parameters.
- * Based on SPECS.md Table: HerokuAgentFields Constructor Parameters (Section 3.2.2)
  */
 export interface HerokuAgentFields extends BaseChatModelParams {
   /**
@@ -352,7 +343,6 @@ export interface HerokuAgentFields extends BaseChatModelParams {
 /**
  * Interface for the options that can be passed at runtime to HerokuAgent methods.
  * Extends BaseChatModelCallOptions and includes Heroku-specific agent parameters.
- * Based on SPECS.md Table: HerokuAgentCallOptions Constructor Parameters (Section 3.2.2)
  */
 export interface HerokuAgentCallOptions extends BaseChatModelCallOptions {
   // Agent-specific runtime options, e.g. metadata, session_id if supported
@@ -363,7 +353,6 @@ export interface HerokuAgentCallOptions extends BaseChatModelCallOptions {
 
 /**
  * Defines the structure for tools used by HerokuAgent.
- * Based on SPECS.md Section 3.5.1.
  */
 export interface HerokuAgentToolDefinition extends ServerTool {
   type: "heroku_tool" | "mcp";
@@ -378,8 +367,10 @@ export interface HerokuAgentToolDefinition extends ServerTool {
   };
 }
 
-// Heroku Agent API Request/Response types
-// Based on SPECS.md Sections 3.4 and Heroku API docs (/v1/agents/heroku)
+/**
+ * Alias for HerokuAgent tool configuration to keep consumer imports concise.
+ */
+export type HerokuTool = HerokuAgentToolDefinition;
 
 /**
  * Base request payload for Heroku Agent API interactions.
@@ -415,8 +406,6 @@ export interface HerokuAgentInvokeResponse {
   session_id?: string;
   error?: any;
 }
-
-// SSE Event Types for /stream (SPECS.md 3.2.2)
 
 /** SSE Event: `message.delta` (Equivalent to `chat.completion` content delta) */
 export interface HerokuAgentMessageDeltaEvent {

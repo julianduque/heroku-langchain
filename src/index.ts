@@ -129,6 +129,7 @@ export type {
   HerokuAgentFields,
   HerokuAgentCallOptions,
   HerokuAgentToolDefinition,
+  HerokuTool,
   HerokuAgentInvokeRequest,
   HerokuAgentInvokeResponse,
   HerokuAgentStreamRequest,

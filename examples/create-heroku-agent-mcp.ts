@@ -1,13 +1,13 @@
 import { createAgent } from "langchain";
 import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgent } from "../src";
-import { HerokuAgentToolDefinition } from "../src/types";
+import { HerokuTool } from "../src/types";
 
 async function main() {
   console.log("🤖 Running HerokuAgent MCP Example...");
 
   const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
-  const tools: HerokuAgentToolDefinition[] = [
+  const tools: HerokuTool[] = [
     {
       type: "mcp",
       name: "mcp-brave/brave_web_search", // MCP tool name registered on Heroku MCP Toolkit

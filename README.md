@@ -168,13 +168,13 @@ The `HerokuAgent` class allows for more autonomous interactions with access to H
 import { createAgent } from "langchain";
 import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgent } from "heroku-langchain";
-import { HerokuAgentToolDefinition } from "heroku-langchain/types";
+import { HerokuTool } from "heroku-langchain/types";
 
 async function agentExample() {
   console.log("Running Heroku createAgent Example...");
 
   const appName = process.env.HEROKU_APP_NAME || "mia-inference-demo";
-  const tools: HerokuAgentToolDefinition[] = [
+  const tools: HerokuTool[] = [
     {
       type: "heroku_tool",
       name: "dyno_run_command",
@@ -226,10 +226,10 @@ You can also use MCP (Model Context Protocol) tools with the agent:
 import { createAgent } from "langchain";
 import { HumanMessage } from "@langchain/core/messages";
 import { HerokuAgent } from "heroku-langchain";
-import { HerokuAgentToolDefinition } from "heroku-langchain/types";
+import { HerokuTool } from "heroku-langchain/types";
 
 async function mcpExample() {
-  const tools: HerokuAgentToolDefinition[] = [
+  const tools: HerokuTool[] = [
     {
       type: "mcp",
       name: "mcp-brave/brave_web_search", // MCP tool name registered on Heroku MCP Toolkit
